@@ -1,0 +1,61 @@
+{
+  "pr_key": "asterinas_asterinas_1502-99f62575",
+  "pr": {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 1502,
+    "base": "998869d57e0e35929348d41f7be19aab866c1f02",
+    "head": "99f62575bce7f5ea8410d0fd7b383a88426e92ac"
+  },
+  "findings": [
+    {
+      "file": "kernel/comps/logger/src/lib.rs",
+      "start_line": 20,
+      "end_line": 27,
+      "message": "I believe this crate cannot be compiled without the `default_logger` feature because of the undefined `init_logger` method.",
+      "tp_fp": "tp",
+      "severity": "medium",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "easy",
+      "context_required": "diff-only",
+      "tp_fp_justification": "init_logger is defined only under #[cfg(feature = \"default_logger\")] but called unconditionally from the #[init_component] init(), so the crate fails to compile with the feature disabled. lrh2000 finding, tatetian concurs ('Same question').",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "lrh2000",
+        "url": "https://github.com/asterinas/asterinas/pull/1502#discussion_r1818643135",
+        "created_at": "2024-10-28T09:12:01Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "99f62575bce7f5ea8410d0fd7b383a88426e92ac",
+        "original_start_line": 27,
+        "original_end_line": 27,
+        "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
+      }
+    },
+    {
+      "file": "ostd/src/logger.rs",
+      "start_line": 50,
+      "end_line": 64,
+      "message": "This line should not be removed unless `Log::enabled` is an empty function (however, it will be, if you fix the comment above). This is because `Log::enabled` documents [say](https://docs.rs/log/latest/log/trait.Log.html#tymethod.enabled):\r\n> For implementors\r\n>\r\n> This method isn’t called automatically by the log! macros. It’s up to an implementation of the Log trait to call enabled in its own log method implementation to guarantee that filtering is applied.",
+      "tp_fp": "tp",
+      "severity": "medium",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "medium",
+      "context_required": "diff-plus-related-files",
+      "tp_fp_justification": "The PR removes the `if !self.enabled(record.metadata()) { return; }` guard from Logger::log. The log crate's Log trait documents that implementors must call enabled themselves for filtering to apply, so log records below max_level are now printed. lrh2000 cites the trait docs. At exam_head the log() body is at L50-64 and contains no enabled check.",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "lrh2000",
+        "url": "https://github.com/asterinas/asterinas/pull/1502#discussion_r1818680762",
+        "created_at": "2024-10-28T09:22:45Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "99f62575bce7f5ea8410d0fd7b383a88426e92ac",
+        "original_start_line": 30,
+        "original_end_line": 30,
+        "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
+      }
+    }
+  ]
+}

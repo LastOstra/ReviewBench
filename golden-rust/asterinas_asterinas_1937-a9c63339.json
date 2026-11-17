@@ -1,0 +1,58 @@
+{
+  "pr_key": "asterinas_asterinas_1937-a9c63339",
+  "pr": {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 1937,
+    "base": "1e3098d734ee253cfff30a32d88cc7313f2bf39d",
+    "head": "a9c63339b357db36df0d8243a2be008ebb461714"
+  },
+  "findings": [
+    {
+      "file": "ostd/src/sync/rcu/mod.rs",
+      "start_line": 203,
+      "end_line": 204,
+      "message": "This still needs to be `*mut Target`.\r\n\r\nThe convertion to `Ref<'_>` needs to happen latter to avoid the soundness issue (as we cannot really have `Ref<'a>`):\r\n```rust\r\nimpl RcuReadGuardInner {\r\n    pub fn get(&self) -> Option<&P::Ref<'_>> { .. }\r\n}\r\n```",
+      "tp_fp": "tp",
+      "severity": "high",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "hard",
+      "context_required": "diff-plus-related-files",
+      "tp_fp_justification": "RcuReadGuardInner stores `ptr_ref: Option<P::Ref<'a>>` constructed eagerly; lrh2000: 'This still needs to be *mut Target. The conversion to Ref<'_> needs to happen later to avoid the soundness issue (as we cannot really have Ref<'a>)'. Storing the reference-like value for 'a is unsound for the RCU guard API.",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "lrh2000",
+        "url": "https://github.com/asterinas/asterinas/pull/1937#discussion_r2033149546",
+        "created_at": "2025-04-08T13:04:07Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "a9c63339b357db36df0d8243a2be008ebb461714",
+        "original_start_line": 204,
+        "original_end_line": 204,
+        "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
+      }
+    },
+    {
+      "file": "ostd/src/sync/rcu/non_null.rs",
+      "start_line": 33,
+      "end_line": 34,
+      "message": "This claim isn't true if we support `Weak<T>`. Please check all the comments and update accordingly.",
+      "tp_fp": "tp",
+      "severity": "medium",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "medium",
+      "context_required": "diff-plus-related-files",
+      "tp_fp_justification": "The into_raw safety contract added to the unsafe trait NonNullPtr claims the raw pointer 'must be valid to be immutably accessed or borrowed until from_raw is called'; lrh2000: 'This claim isn't true if we support Weak<T>' (the target can be dropped while the Weak lives). Incorrect safety contract of an unsafe trait that Rcu relies on for soundness, not mere prose.",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "lrh2000",
+        "url": "https://github.com/asterinas/asterinas/pull/1937#discussion_r2033143404",
+        "created_at": "2025-04-08T13:00:44Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "a9c63339b357db36df0d8243a2be008ebb461714"
+      }
+    }
+  ]
+}

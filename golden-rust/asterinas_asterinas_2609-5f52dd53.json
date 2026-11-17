@@ -1,0 +1,33 @@
+{
+  "pr_key": "asterinas_asterinas_2609-5f52dd53",
+  "pr": {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 2609,
+    "base": "a616682fe3974e0b1ca04a8e009e31570593e1eb",
+    "head": "5f52dd539c0b6b5bd769d4fee3033f68cb09ec52"
+  },
+  "findings": [
+    {
+      "file": "kernel/src/syscall/statx.rs",
+      "start_line": 172,
+      "end_line": 172,
+      "message": "Before updating the stx_mnt_id field, according to statx system call definition (https://www.man7.org/linux/man-pages/man2/statx.2.html), we need to check whether the STATX_MNT_ID bit is set in stx_mask to make sure that this field is required by caller.\r\n",
+      "tp_fp": "tp",
+      "severity": "medium",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "easy",
+      "context_required": "diff-only",
+      "tp_fp_justification": "TinaZhangZW flags the new stx_mnt_id population: the returned stx_mask does not declare STATX_MNT_ID, so userspace cannot know the field is valid (statx contract: only fields advertised in the returned mask may be relied on). Author accepts and adds STATX_MNT_ID to stx_mask in response (2555404885). Introduced by this PR (stx_mnt_id was previously hardcoded 0). Confirmed at exam_head: stx_mask (L137-148) omits STATX_MNT_ID while stx_mnt_id is populated at L172.",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "TinaZhangZW",
+        "url": "https://github.com/asterinas/asterinas/pull/2609#discussion_r2555177521",
+        "created_at": "2025-11-24T08:44:00Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "5f52dd539c0b6b5bd769d4fee3033f68cb09ec52"
+      }
+    }
+  ]
+}

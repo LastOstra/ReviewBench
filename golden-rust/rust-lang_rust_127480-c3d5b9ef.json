@@ -1,0 +1,33 @@
+{
+  "pr_key": "rust-lang_rust_127480-c3d5b9ef",
+  "pr": {
+    "repo": "https://github.com/rust-lang/rust",
+    "pr_number": 127480,
+    "base": "b1de36ff34a4fe4ba820f195481a13aee74e1358",
+    "head": "c3d5b9efa5b270ea6c2d50dd9880bf9f1032bd63"
+  },
+  "findings": [
+    {
+      "file": "library/std/src/sys/pal/unix/process/process_vxworks.rs",
+      "start_line": 70,
+      "end_line": 70,
+      "message": "Possibly? I recommend that this starts much larger, around 64KiB. 4096B is much too small, even for tiny embedded systems. We can correct it in a later change if it needs to be corrected.",
+      "tp_fp": "tp",
+      "severity": "medium",
+      "category": "reliability",
+      "scope": "introduced-by-pr",
+      "difficulty": "medium",
+      "context_required": "diff-plus-related-files",
+      "tp_fp_justification": "workingjubilee (reply, thread root 1687015062): PTHREAD_STACK_MIN (4096 bytes) is far too small for the spawned thread's stack compared to the previous 256KiB, risking stack overflow.",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "workingjubilee",
+        "url": "https://github.com/rust-lang/rust/pull/127480#discussion_r1687622808",
+        "created_at": "2024-07-23T08:10:20Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "c3d5b9efa5b270ea6c2d50dd9880bf9f1032bd63"
+      }
+    }
+  ]
+}

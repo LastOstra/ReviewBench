@@ -1,0 +1,36 @@
+{
+  "pr_key": "asterinas_asterinas_754-c835e488",
+  "pr": {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 754,
+    "base": "2002db548196a7c4c0f9a36e40b3bb68d7e6141e",
+    "head": "c835e48875d96336bc1a7c806f77add4a0f8a6ca"
+  },
+  "findings": [
+    {
+      "file": "kernel/aster-nix/src/taskless.rs",
+      "start_line": 117,
+      "end_line": 121,
+      "message": "The `do_schedule` function is vulnerable to race conditions. Consider the following concurrent execution sequences.\r\n\r\n```\r\nThread A                        |   Thread B\r\nis_scheduled.load() == false    |\r\n                                |   is_scheduled.load() == false\r\nis_scheduled.store(true)        |\r\npush_front(taskless.clone()     |\r\n                                |   is_scheduled.store(true)\r\n                                |   push_front(taskless.clone()\r\n```\r\n\r\nGiven that fact that this simple `do_schedule` function is vulnerable to race conditions, I am worried about the correctness of `taskless_softirq_handler` under concurrency.\r\n\r\nPlease examine `taskless_softirq_handler` and `do_schedule` more carefully for potential race conditions. I encourage you to explicitly write out the invariants that must be held despite of concurrency. These invariants will be very helpful to reason about the correctness of the code.\r\n\r\n",
+      "tp_fp": "tp",
+      "severity": "high",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "medium",
+      "context_required": "diff-only",
+      "tp_fp_justification": "New do_schedule uses check-then-act (is_scheduled.load then store) instead of an atomic RMW; tatetian gives a concrete two-thread interleaving where the same taskless is pushed twice, breaking the documented no-concurrent-execution invariant. Introduced by this PR (new file); author later fixed with compare_exchange.",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "tatetian",
+        "url": "https://github.com/asterinas/asterinas/pull/754#discussion_r1613113346",
+        "created_at": "2024-05-24T08:50:16Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "c835e48875d96336bc1a7c806f77add4a0f8a6ca",
+        "original_start_line": 121,
+        "original_end_line": 121,
+        "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
+      }
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "pr_key": "rust-lang_rust_145940-f135601b",
+  "pr": {
+    "repo": "https://github.com/rust-lang/rust",
+    "pr_number": 145940,
+    "base": "6ba0ce40941eee1ca02e9ba49c791ada5158747a",
+    "head": "f135601b07a9bf623691751d139b6bf8b9a6af86"
+  },
+  "findings": [
+    {
+      "file": "library/core/src/fmt/num.rs",
+      "start_line": 386,
+      "end_line": 386,
+      "message": "This can be a bit more specific to make sure we reject things like control characters.\n\n```suggestion\n            assert!(LETTER_E.is_ascii_alphabetic(), \"non-alphabetic character\");\n```\n\n",
+      "tp_fp": "tp",
+      "severity": "medium",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "easy",
+      "context_required": "diff-only",
+      "tp_fp_justification": "tgross35: is_ascii is too broad for the digit/letter check; is_ascii_alphabetic is required, otherwise non-alphabetic ASCII bytes pass the check and produce wrong formatting output.",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "tgross35",
+        "url": "https://github.com/rust-lang/rust/pull/145940#discussion_r2308631920",
+        "created_at": "2025-08-28T21:53:50Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "f135601b07a9bf623691751d139b6bf8b9a6af86"
+      }
+    },
+    {
+      "file": "library/core/src/fmt/num.rs",
+      "start_line": 518,
+      "end_line": 521,
+      "message": "May as well ensure this here\n\n```suggestion\n                    const { assert($T::MAX).ilog10() < 100) };\n                    // SAFETY: A `u256::MAX` would get exponent 77.\n                    unsafe { core::hint::unreachable_unchecked() }\n```",
+      "tp_fp": "tp",
+      "severity": "high",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "medium",
+      "context_required": "diff-plus-related-files",
+      "tp_fp_justification": "tgross35: unreachable_unchecked relies on exp < 100 which is not statically guaranteed; a const assert on ilog10 < 100 is needed to make the unsafe precondition hold.",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "tgross35",
+        "url": "https://github.com/rust-lang/rust/pull/145940#discussion_r2324281878",
+        "created_at": "2025-09-05T07:04:49Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "f135601b07a9bf623691751d139b6bf8b9a6af86",
+        "original_start_line": 519,
+        "original_end_line": 522,
+        "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
+      }
+    }
+  ]
+}

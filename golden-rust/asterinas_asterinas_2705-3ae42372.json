@@ -1,0 +1,61 @@
+{
+  "pr_key": "asterinas_asterinas_2705-3ae42372",
+  "pr": {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 2705,
+    "base": "dbba54b02c618bed1c3f53591b431dc015116437",
+    "head": "3ae423727e2c3595b2962aa6e3556aa6e954d0ad"
+  },
+  "findings": [
+    {
+      "file": "kernel/src/syscall/rt_sigtimedwait.rs",
+      "start_line": 77,
+      "end_line": 78,
+      "message": "You can use `sig_disposition.will_ignore(&signal)` instead of `sig_disposition.get(signal.num()) == SigAction::Ign` here. There are two cases when a signal will be ignored, the action is `SigAction::Ign`, or the action is `SigAction::Dfl`, and the default action is to ignore the signal. ",
+      "tp_fp": "tp",
+      "severity": "medium",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "medium",
+      "context_required": "diff-plus-related-files",
+      "tp_fp_justification": "StevenJiang1110: the dequeue filter misses signals whose default action is ignore (Dfl); should use will_ignore so rt_sigtimedwait does not wait on signals that would be ignored.",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "StevenJiang1110",
+        "url": "https://github.com/asterinas/asterinas/pull/2705#discussion_r2601641995",
+        "created_at": "2025-12-09T08:45:25Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "3ae423727e2c3595b2962aa6e3556aa6e954d0ad",
+        "original_start_line": 78,
+        "original_end_line": 78,
+        "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
+      }
+    },
+    {
+      "file": "kernel/src/syscall/rt_sigtimedwait.rs",
+      "start_line": 71,
+      "end_line": 81,
+      "message": "If the signal is going to be dropped, we shouldn't write to siginfo？ Therefore, lines 77–81 should be moved above line 71.",
+      "tp_fp": "tp",
+      "severity": "medium",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "medium",
+      "context_required": "diff-only",
+      "tp_fp_justification": "StevenJiang1110: siginfo is still written to userspace for a signal that is discarded, leaking stale/incorrect siginfo. Excluded candidates: fast-path 2601622539 and dedup 2601648633 (not substantive defect findings).",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "StevenJiang1110",
+        "url": "https://github.com/asterinas/asterinas/pull/2705#discussion_r2601629480",
+        "created_at": "2025-12-09T08:41:41Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "3ae423727e2c3595b2962aa6e3556aa6e954d0ad",
+        "original_start_line": 81,
+        "original_end_line": 81,
+        "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
+      }
+    }
+  ]
+}

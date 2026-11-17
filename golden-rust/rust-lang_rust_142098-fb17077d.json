@@ -1,0 +1,77 @@
+{
+  "pr_key": "rust-lang_rust_142098-fb17077d",
+  "pr": {
+    "repo": "https://github.com/rust-lang/rust",
+    "pr_number": 142098,
+    "base": "22be76b7e259f27bf3e55eb931f354cd8b69d55f",
+    "head": "fb17077d1e3ff61f192e7d7eec923c2e4629cd66"
+  },
+  "findings": [
+    {
+      "file": "library/core/src/fmt/num.rs",
+      "start_line": 255,
+      "end_line": 255,
+      "message": "This needs to be an unsafe function because it makes assumptions on the size of `buf`.",
+      "tp_fp": "tp",
+      "severity": "high",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "medium",
+      "context_required": "diff-plus-related-files",
+      "tp_fp_justification": "Amanieu: _fmt is a safe fn but relies on the caller providing a sufficiently large buffer; it must be unsafe to encode that precondition.",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "Amanieu",
+        "url": "https://github.com/rust-lang/rust/pull/142098#discussion_r2179205158",
+        "created_at": "2025-07-02T06:14:58Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "fb17077d1e3ff61f192e7d7eec923c2e4629cd66"
+      }
+    },
+    {
+      "file": "library/core/src/fmt/num.rs",
+      "start_line": 690,
+      "end_line": 690,
+      "message": "Same here, this needs to be unsafe because it assumes the slice size. Or `_fmt_inner` should be made safe.",
+      "tp_fp": "tp",
+      "severity": "high",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "medium",
+      "context_required": "diff-plus-related-files",
+      "tp_fp_justification": "Amanieu: the u128 version of _fmt has the same safe-fn-with-buffer-precondition soundness issue.",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "Amanieu",
+        "url": "https://github.com/rust-lang/rust/pull/142098#discussion_r2179210596",
+        "created_at": "2025-07-02T06:18:51Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "fb17077d1e3ff61f192e7d7eec923c2e4629cd66"
+      }
+    },
+    {
+      "file": "library/core/src/fmt/num.rs",
+      "start_line": 432,
+      "end_line": 432,
+      "message": "Should this be `curr`? How does this even compile?",
+      "tp_fp": "tp",
+      "severity": "medium",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "easy",
+      "context_required": "diff-only",
+      "tp_fp_justification": "Amanieu: `cur` should be `curr`; as written the code fails to compile under optimize_for_size.",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "Amanieu",
+        "url": "https://github.com/rust-lang/rust/pull/142098#discussion_r2179208315",
+        "created_at": "2025-07-02T06:17:17Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "fb17077d1e3ff61f192e7d7eec923c2e4629cd66"
+      }
+    }
+  ]
+}

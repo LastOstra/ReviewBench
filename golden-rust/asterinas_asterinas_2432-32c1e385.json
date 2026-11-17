@@ -1,0 +1,33 @@
+{
+  "pr_key": "asterinas_asterinas_2432-32c1e385",
+  "pr": {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 2432,
+    "base": "32581caa7a65e417787fd3d33fe2054f47cde27a",
+    "head": "32c1e385db6469783749fa544b781bee22d1bb63"
+  },
+  "findings": [
+    {
+      "file": "kernel/src/syscall/mount.rs",
+      "start_line": 75,
+      "end_line": 75,
+      "message": "From the [Linux source code](https://elixir.bootlin.com/linux/v6.17/source/fs/namespace.c#L4097), MS_NODIRATIME is missing here? \r\n\r\nIt's also better to add a Reference to the corresponding Linux code here.",
+      "tp_fp": "tp",
+      "severity": "medium",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "easy",
+      "context_required": "diff-only",
+      "tp_fp_justification": "MS_NODIRATIME is omitted from the mount-flag translation (StevenJiang1110). The second candidate finding (2471590727, mount options belong to Mount not FileSystem) was dropped as API-design preference: reviewer himself notes set_mount_options is currently a no-op and questions the API's necessity.",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "StevenJiang1110",
+        "url": "https://github.com/asterinas/asterinas/pull/2432#discussion_r2468739966",
+        "created_at": "2025-10-28T09:36:20Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "32c1e385db6469783749fa544b781bee22d1bb63"
+      }
+    }
+  ]
+}

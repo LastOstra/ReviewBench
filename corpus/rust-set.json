@@ -1,0 +1,252 @@
+[
+  {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 754,
+    "pr_url": "https://github.com/asterinas/asterinas/pull/754",
+    "base": "2002db548196a7c4c0f9a36e40b3bb68d7e6141e",
+    "head": "c835e48875d96336bc1a7c806f77add4a0f8a6ca",
+    "title": "Enable softirq mechanism",
+    "body": "Based on PR #721 \r\n\r\nCurrent implementation will execute softirq at the return of the hardware interruption. Future should enable ksoftirqd/n thread.\r\n",
+    "nwo": "asterinas/asterinas"
+  },
+  {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 1387,
+    "pr_url": "https://github.com/asterinas/asterinas/pull/1387",
+    "base": "0a36760f7a42b7fe27735e29f971423f6ec4b1ca",
+    "head": "e6e53c5204e54a4dfb7945eedcddefef3200ce56",
+    "title": "Optimize the clear procedure of the page table",
+    "body": "This optimization replaces the original unmap operation used for clearing the `VmSpace` with a direct replace operation on the pt root node, thereby reducing unnecessary iterations and shortening the time for a single `execve` by 10-15us.",
+    "nwo": "asterinas/asterinas"
+  },
+  {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 1502,
+    "pr_url": "https://github.com/asterinas/asterinas/pull/1502",
+    "base": "998869d57e0e35929348d41f7be19aab866c1f02",
+    "head": "99f62575bce7f5ea8410d0fd7b383a88426e92ac",
+    "title": "Make ostd logger injectable",
+    "body": "This PR is splitted from #1487 , with only making the ostd logger injectable.",
+    "nwo": "asterinas/asterinas"
+  },
+  {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 1822,
+    "pr_url": "https://github.com/asterinas/asterinas/pull/1822",
+    "base": "56b85cb132e54cc51522e6444bc17f9e00eb2ee3",
+    "head": "b223ef0352cf4cc0c6d75fe781d83c8226e7d2f8",
+    "title": "Fix a potential race condition during PTE read/write operations",
+    "body": "KernMiri reports a data race: when a `CursorMut` write to a PTE, there may be a concurrent read operation to the same PTE during the `Cursor::new()`. \r\n\r\nFor the `read` operation in `Cursor::new()`, reading the PTE either before the write or after the write does not affect correct execution. However, if it reads a PTE that is halfway through being written, it may cause issues. Therefore, it is necessary to ensure that the `read`/`write` operations here are at least single instructions. This PR replaces the original `read`/`write` with the `read_once`/`write_once` API to strengthen this guarantee.",
+    "nwo": "asterinas/asterinas"
+  },
+  {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 1861,
+    "pr_url": "https://github.com/asterinas/asterinas/pull/1861",
+    "base": "56b85cb132e54cc51522e6444bc17f9e00eb2ee3",
+    "head": "d5569147cb121ba367c104bc6b7a5fbf291efc06",
+    "title": "Support PR_SET/GET_CHILD_SUBREAPER for `sys_prctl`",
+    "body": "Required by #1851.",
+    "nwo": "asterinas/asterinas"
+  },
+  {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 1928,
+    "pr_url": "https://github.com/asterinas/asterinas/pull/1928",
+    "base": "9872adaa718b6b98d99a564cd4f6f716757d4830",
+    "head": "a56d1ffea6ba140c20fb3eb86251b8f536139d53",
+    "title": "Introduce the semantics of the atomic-mode guard",
+    "body": "This PR lets the Guardian ensures that preemption is disabled while the lock is held. This can allow RCU read with both `DisabledPreemptGuard` and `DisabledLocalIrqGuard`.",
+    "nwo": "asterinas/asterinas"
+  },
+  {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 1937,
+    "pr_url": "https://github.com/asterinas/asterinas/pull/1937",
+    "base": "1e3098d734ee253cfff30a32d88cc7313f2bf39d",
+    "head": "a9c63339b357db36df0d8243a2be008ebb461714",
+    "title": "Enable RCU to read reference to stored pointers",
+    "body": "This PR wants to address two limitations of RCU usages: \r\n1. Make RCU can obtain the reference to `P`. In this way users are able to invoke the methods of `P` like `Arc::clone`.\r\n2. Make RCU manages `NonNullPtr` instead of `OwnerPtr`. Once RCU is used to obtain a reference to `P` instead of `P::target`, the requirement for `P` to be an owning pointer is eliminated. This allows RCU to manage a wider range of pointers, such as `Weak<T>`.",
+    "nwo": "asterinas/asterinas"
+  },
+  {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 2342,
+    "pr_url": "https://github.com/asterinas/asterinas/pull/2342",
+    "base": "3882eb40000826020c6ffe5026e0f8d6ecb3b902",
+    "head": "e1163681edd747b352745b9dfeaf333f2be7c71b",
+    "title": "Optimize the usage of `FsResolver` during initialization",
+    "body": "This PR is to pave the way for future mount namespace support.\r\n\r\n## Include the VDSO library directly\r\n\r\nThis commit embeds the VDSO library directly into the kernel using include_bytes!. However, since the VDSO library is currently cloned from github during initramfs creation, the current implementation is somewhat inelegant—I'm unsure if this is acceptable as a temporary solution.\r\n\r\n**Alternative**: Like the next commit, move the initialization of VDSO to the init task and remain the `FsResolver` usage.\r\n\r\nThe CI failure is due to the arch-unaware `make check`, #2349 will fix this problem.\r\n\r\n## Optimize the `FsResolver` acquisitions during the initialization phase\r\n\r\nThis commit removes the `ext2` and `exfat` mount operations during kernel boot, delegating them to userspace. It also relocates the logic for building the initramfs file tree and mounting `/dev` into the init task.\r\n\r\nThe reason for not fully offloading `/dev` mounting to userspace is that the current operations here are relatively complex, and Linux also supports kernel-managed `/dev` mounting and initialization (by enabling `CONFIG_DEVTMPFS_MOUNT`). Hence retaining these operations remains reasonable.",
+    "nwo": "asterinas/asterinas"
+  },
+  {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 2432,
+    "pr_url": "https://github.com/asterinas/asterinas/pull/2432",
+    "base": "32581caa7a65e417787fd3d33fe2054f47cde27a",
+    "head": "32c1e385db6469783749fa544b781bee22d1bb63",
+    "title": "Support `MS_REMOUNT` flag",
+    "body": "This PR adds the framework for per-mount options and per-filesystem options, and supports \"dummy\" `MS_REMOUNT` flag for mount syscall, which is required for Podman support.\r\n\r\nThe currently set mount options have no actual effect. The potential short-term user would be to output all configured options when generating the `mountinfo` file.",
+    "nwo": "asterinas/asterinas"
+  },
+  {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 2445,
+    "pr_url": "https://github.com/asterinas/asterinas/pull/2445",
+    "base": "b0407dd5173552b59cf08f84a5e44914b60e67bd",
+    "head": "b842e92e3978c2655c56f3fe76f3671221675735",
+    "title": "Implement `pivot_root` syscall",
+    "body": "Required by #2911 ",
+    "nwo": "asterinas/asterinas"
+  },
+  {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 2609,
+    "pr_url": "https://github.com/asterinas/asterinas/pull/2609",
+    "base": "a616682fe3974e0b1ca04a8e009e31570593e1eb",
+    "head": "5f52dd539c0b6b5bd769d4fee3033f68cb09ec52",
+    "title": "Make the mount-related fields in statx effective",
+    "body": "When debugging systemd in nixos, I found that after entering the shell, the `/run/current-system` symlink we prepared in the initialization script could no longer be found, which prevented the `$PATH` environment variable from correctly locating `/run/current-system/sw/bin`. The underlying reason is that systemd automatically mounts a tmpfs at `/run`, overwriting the original contents. In fact, before mounting, systemd will use the `statx` syscall to check if the current path is already a mount root. If it is, it skips the corresponding operation.\r\n\r\nIn our current `statx` implementation, the `stx_attributes_mask` includes `STATX_ATTR_MOUNT_ROOT`, which implies that the current `stx_attributes` supports the `STATX_ATTR_MOUNT_ROOT` flag. But in reality, we don't actually support this feature, which caused systemd to mistakenly believe that the current path was not a mount root. This PR fixes that issue.",
+    "nwo": "asterinas/asterinas"
+  },
+  {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 2705,
+    "pr_url": "https://github.com/asterinas/asterinas/pull/2705",
+    "base": "dbba54b02c618bed1c3f53591b431dc015116437",
+    "head": "3ae423727e2c3595b2962aa6e3556aa6e954d0ad",
+    "title": "Support `rt_sigtimedwait` syscall",
+    "body": "`rt_sigtimedwait` syscall will be used by systemd when calling `poweroff`. systemd uses this syscall to wait for related processes to complete `sync` operations. Without this syscall, the system might sometimes shut down before `sync` is fully completed, leading to data corruption.",
+    "nwo": "asterinas/asterinas"
+  },
+  {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 3339,
+    "pr_url": "https://github.com/asterinas/asterinas/pull/3339",
+    "base": "b23e91b8873ac818c56eec3ad95e90bdfccf5e9b",
+    "head": "8cfed512166b9e1fe0cc7dfd25f4476b6e46d57e",
+    "title": "Fix TDX MapGPA retry handling",
+    "body": "",
+    "nwo": "asterinas/asterinas"
+  },
+  {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 3928,
+    "pr_url": "https://github.com/asterinas/asterinas/pull/3928",
+    "base": "02d977143a1bdfdd0a63a378d4eb748b6a0b4295",
+    "head": "dd630e185b66890bef155e2b1c30dda7675873d9",
+    "title": "Fix underflow in MemoryRegion::as_aligned on sub-page unaligned regions",
+    "body": "A `Usable` region smaller than a page makes `MemoryRegion::as_aligned` panic: aligning inward moves the base past the end, and `end - base` underflows. `saturating_sub` collapses such a region to an empty one instead; the added kernel-mode test covers it.\r\n\r\nThis commit fixes issue #3887.",
+    "nwo": "asterinas/asterinas"
+  },
+  {
+    "repo": "https://github.com/rust-lang/rust",
+    "pr_number": 122441,
+    "pr_url": "https://github.com/rust-lang/rust/pull/122441",
+    "base": "9ce37dc7290e60bd0dfc7a5d4fcdbbd836f989f0",
+    "head": "cc92a9b8267beddb181fd7598d85dccae6fdbb96",
+    "title": "Improve several `Read` implementations",
+    "body": "- `read_to_end` and `read_to_string` for `Cursor`\r\n- Error on OOM in `read_to_string` of `&[u8]` and `VecDeque<u8>`\r\n- Avoid making the slices contiguous in `VecDeque::read_to_string`\r\n- ~`read_exact` and (unstable) `read_buf_exact` for `Take`~\r\n- ~`read_buf` for `UnixStream` and `&UnixStream`~ (moved to #123084)\r\n- `read_to_end` for `ChildStdErr`",
+    "nwo": "rust-lang/rust"
+  },
+  {
+    "repo": "https://github.com/rust-lang/rust",
+    "pr_number": 127480,
+    "pr_url": "https://github.com/rust-lang/rust/pull/127480",
+    "base": "b1de36ff34a4fe4ba820f195481a13aee74e1358",
+    "head": "c3d5b9efa5b270ea6c2d50dd9880bf9f1032bd63",
+    "title": "Fix build failure on vxworks #127084 ",
+    "body": "<!-- homu-ignore:start -->\n*[View all comments](https://triagebot.infra.rust-lang.org/gh-comments/rust-lang/rust/pull/127480)*\n<!-- homu-ignore:end -->\n\nPR to address issue rust-lang/rust#127084 . \r\n1. Skip `reset_segpipe` for vxworks\r\n2. Return unimplemented error for vxworks from settimes and lchown\r\n3. Temporarily skip dirfd for vxworks\r\n4. Add allow unused unsafe on read_at and write_at functions in unix/fs.rs\r\n5. Using cfg disable ON_BROKEN_PIPE_FLAG_USED and on_broken_pipe_flag_used() for vxworks\r\n6. Remove old crate::syscommon::thread::min_stack() reference from process_vxworks.rs and update to set stack size of rtpthread\r\n\r\nThank you.",
+    "nwo": "rust-lang/rust"
+  },
+  {
+    "repo": "https://github.com/rust-lang/rust",
+    "pr_number": 129838,
+    "pr_url": "https://github.com/rust-lang/rust/pull/129838",
+    "base": "d571ae851d93541bef826c3c48c1e9ad99da77d6",
+    "head": "ab840e05d2715d48a8e9600912283a539c1afad5",
+    "title": "uefi: process: Add args support",
+    "body": "- Wrap all args with quotes.\r\n- Escape ^ and \" inside quotes using ^.\r\n- Doing reverse of arg parsing: https://github.com/rust-lang/rust/blob/d571ae851d93541bef826c3c48c1e9ad99da77d6/library/std/src/sys/pal/uefi/args.rs#L81\r\n\r\n r​? joboet\r\n",
+    "nwo": "rust-lang/rust"
+  },
+  {
+    "repo": "https://github.com/rust-lang/rust",
+    "pr_number": 139632,
+    "pr_url": "https://github.com/rust-lang/rust/pull/139632",
+    "base": "7d7de5bf3c3cbf9c2c5bbc5cbfb9197a8a427d35",
+    "head": "694a6b9f8bc911536eaefdcd0ab470849030937d",
+    "title": "cfi: do not transmute function pointers in formatting code",
+    "body": "<!-- homu-ignore:start -->\n*[View all comments](https://triagebot.infra.rust-lang.org/gh-comments/rust-lang/rust/pull/139632)*\n<!-- homu-ignore:end -->\n\nFollow-up to rust-lang/rust#115954.\r\nAddresses rust-lang/rust#115199 point 2.\r\nRelated to rust-lang/rust#128728.\r\nDiscussion [on the LKML](https://lore.kernel.org/all/20250410115420.366349-1-panikiel@google.com/).\r\n\r\ncc @maurer @rcvalle @RalfJung ",
+    "nwo": "rust-lang/rust"
+  },
+  {
+    "repo": "https://github.com/rust-lang/rust",
+    "pr_number": 142098,
+    "pr_url": "https://github.com/rust-lang/rust/pull/142098",
+    "base": "22be76b7e259f27bf3e55eb931f354cd8b69d55f",
+    "head": "fb17077d1e3ff61f192e7d7eec923c2e4629cd66",
+    "title": "Implement `int_format_into` feature",
+    "body": "<!-- homu-ignore:start -->\n*[View all comments](https://triagebot.infra.rust-lang.org/gh-comments/rust-lang/rust/pull/142098)*\n<!-- homu-ignore:end -->\n\nI took over rust-lang/rust#138338 with @madhav-madhusoodanan's approval.\r\n\r\nSince https://github.com/rust-lang/rust/pull/136264, a lot of changes happened so I made use of them to reduce the number of changes.\r\n\r\nACP approval: https://github.com/rust-lang/libs-team/issues/546#issuecomment-2707244569\r\n\r\n## Associated Issue\r\n- https://github.com/rust-lang/rust/issues/138215\r\n\r\nr? @hanna-kruppe ",
+    "nwo": "rust-lang/rust"
+  },
+  {
+    "repo": "https://github.com/rust-lang/rust",
+    "pr_number": 145940,
+    "pr_url": "https://github.com/rust-lang/rust/pull/145940",
+    "base": "6ba0ce40941eee1ca02e9ba49c791ada5158747a",
+    "head": "f135601b07a9bf623691751d139b6bf8b9a6af86",
+    "title": "single buffer for exponent fmt of integers",
+    "body": "<!-- homu-ignore:start -->\n*[View all comments](https://triagebot.infra.rust-lang.org/gh-comments/rust-lang/rust/pull/145940)*\n<!-- homu-ignore:end -->\n\nNo need for fragmented buffers when formatting.\r\n\r\n```\r\norig.txt: fmt::write_i128_exp                                                  143.39ns/iter      +/- 0.32\r\norig.txt: fmt::write_i64_exp                                                    68.72ns/iter      +/- 0.03\r\nnew.txt:  fmt::write_i128_exp                                                  138.29ns/iter      +/- 0.50\r\nnew.txt:  fmt::write_i64_exp                                                    58.93ns/iter      +/- 4.62\r\n```\r\n\r\nThis patch fully eliminates unsafe pointer use (after rust-lang/rust#135265 and rust-lang/rust#136594).\r\n\r\n    r? libs",
+    "nwo": "rust-lang/rust"
+  },
+  {
+    "repo": "https://github.com/rust-lang/rust",
+    "pr_number": 147696,
+    "pr_url": "https://github.com/rust-lang/rust/pull/147696",
+    "base": "e100792918c8bd9e0cb830f96fc9b171e8892fa1",
+    "head": "853099f49c4680bf1f46802cb4f6a153717574dd",
+    "title": "Implement `bit` and `set_bit` for integral types.",
+    "body": "<!-- homu-ignore:start -->\r\n*[View all comments](https://triagebot.infra.rust-lang.org/gh-comments/rust-lang/rust/pull/147696)*\r\n<!-- homu-ignore:end -->\r\n\r\nTracking issue: rust-lang/rust#147702\r\n\r\nThis PR implements the `bit` and `set_bit` methods for integral types:\r\n\r\n```rust\r\nimpl /* uN, iN, usize, isize */ {\r\n    pub const fn bit(self, index: u32) -> bool;\r\n\r\n    pub const fn set_bit(self, index: u32, value: bool) -> Self;\r\n}\r\n```",
+    "nwo": "rust-lang/rust"
+  },
+  {
+    "repo": "https://github.com/rust-lang/rust",
+    "pr_number": 154052,
+    "pr_url": "https://github.com/rust-lang/rust/pull/154052",
+    "base": "53d60bb1c5d325b43419c7618287a1405dec36d0",
+    "head": "d57cfdfad02e9cae75874412c0df06986938a377",
+    "title": "float: Fix panic at max exponential precision",
+    "body": "Rust's formatting machinery allows precision values of up to u16::MAX. Exponential formatting works out the number of significant digits to use by adding one (for the integral digit before the decimal point).\r\n\r\nThis previously used usize precision, so the maximum validated precision did not overflow, but in commit fb9ce0297682 (\"Limit formatting width and precision to 16 bits.\") the precision type was narrowed to u16 without widening that addition first.\r\n\r\nAs a result an exponential precision value of 65535 is no longer handled correctly, because the digit count wraps to 0, and thus \"{:.65535e}\" panics in flt2dec::to_exact_exp_str with \"assertion failed: ndigits > 0\". Other formats (and the parser) accept values up to u16::MAX.\r\n\r\nA naive fix would be to widen that addition back to usize, but that still does not properly address 16-bit targets, where usize is only guaranteed to be able to represent values up to u16::MAX. The real issue is that this internal API is expressed in the wrong units for the formatter.\r\n\r\nFix this by changing exact exponential formatting to take fractional digits internally as well, and compute the temporary significant digit bound only when sizing the scratch buffer. To support that let's also make formatted length accounting saturate so that extremely large rendered outputs do not reintroduce overflows in padding logic.\r\n\r\nThis preserves the existing intent and keeps FormattingOptions compact while making formatting work consistently again.",
+    "nwo": "rust-lang/rust"
+  },
+  {
+    "repo": "https://github.com/rust-lang/rust",
+    "pr_number": 159130,
+    "pr_url": "https://github.com/rust-lang/rust/pull/159130",
+    "base": "ad49852b6f3dd9c1c73fe909d8843bb7e464b387",
+    "head": "c257aefd56c79af1ac53265f74d225c9660c70bd",
+    "title": "a bit optimize four-digit chunks in integer formatting",
+    "body": "<!-- homu-ignore:start -->\n*[View all comments](https://triagebot.infra.rust-lang.org/gh-comments/rust-lang/rust/pull/159130)*\n<!-- homu-ignore:end -->\n\n<!-- homu-ignore:start -->\r\n<!--\r\nIf this PR is related to an unstable feature or an otherwise tracked effort,\r\nplease link to the relevant tracking issue here. If you don't know of a related\r\ntracking issue or there are none, feel free to ignore this.\r\n\r\nThis PR will get automatically assigned to a reviewer. In case you would like\r\na specific user to review your work, you can assign it to them by using\r\n\r\n    r? <reviewer name>\r\n-->\r\n<!-- homu-ignore:end -->\r\n\r\n<p>\r\n  <img\r\n    src=\"https://thesvg.org/icons/compiler-explorer/default.svg\"\r\n    alt=\"Compiler Explorer\"\r\n    height=\"16\"\r\n    valign=\"middle\"\r\n  />\r\n  <a href=\"https://godbolt.org/z/aTr54hTvT\">GodBolt</a>\r\n</p>\r\n\r\nNumber of asm instructions has decreased (78 -> 59)\r\n\r\nThe current upstream version contains:\r\n\r\n```asm\r\nmovabs  rax, 9999999999999999\r\ncmp     rsi, rax\r\nja      .LBB0_2\r\n```\r\n\r\n(if `n > 9_999_999_999_999_999` -> go to panic)\r\n\r\nBut this function isn't part of the public API, so _I suppose_ we can use `assert_unchecked(n < 10_000_000_000_000_000);`\r\n\r\nSimilarly, `write_quad` has been moved to a separate fn to reduce duplication slightly",
+    "nwo": "rust-lang/rust"
+  },
+  {
+    "repo": "https://github.com/rust-lang/rust",
+    "pr_number": 165284,
+    "pr_url": "https://github.com/rust-lang/rust/pull/165284",
+    "base": "f90a2d27c2a1e18f10f4fd84c0dcd02710c37de8",
+    "head": "d6bbfd1e10a3078e37db546f7d0b76bfdc2f419b",
+    "title": "Ensure the display impl of uXX is small with optimize_for_size",
+    "body": "Fixes rust-lang/rust#165280\r\n\r\nLLVM is not smart enough to elide the bounds checks here (or at least it pretends not to be when optimizing for size), so we have to hold its hand.\r\n\r\nNew codegen (old codegen see issue): https://rust.godbolt.org/z/e8q3MGnh1\r\n\r\nr? libs",
+    "nwo": "rust-lang/rust"
+  },
+  {
+    "repo": "https://github.com/rust-lang/rust",
+    "pr_number": 165681,
+    "pr_url": "https://github.com/rust-lang/rust/pull/165681",
+    "base": "4de0e38612353dc524009a12ad43f0c05a5f8c6e",
+    "head": "1f37fda1868d8c7ba543a2901fe102224765d205",
+    "title": "Add safety requirements for Pattern and Searcher",
+    "body": "<!-- homu-ignore:start -->\r\n*[View all comments](https://triagebot.infra.rust-lang.org/gh-comments/rust-lang/rust/pull/165681)*\r\n<!-- homu-ignore:end -->\r\n\r\n<!-- homu-ignore:start -->\r\n<!--\r\nPlease read our [LLM policy] before opening a PR,\r\nIf you used an LLM to generate any part of this PR, including the PR description, please disclose that according to our [guidelines][disclosure guidelines].\r\nLLM contributions are not banned, but are held to a higher standard of review and correctness.\r\n\r\n[LLM policy]: https://forge.rust-lang.org/policies/llm-usage.html\r\n[disclosure guidelines]: https://rustc-dev-guide.rust-lang.org/llm-guidance/writing.html#disclosure-guidelines\r\n\r\nIf this PR is related to an unstable feature or an otherwise tracked effort,\r\nplease link to the relevant tracking issue here. If you don't know of a related\r\ntracking issue or there are none, feel free to ignore this.\r\n\r\nThis PR will get automatically assigned to a reviewer. In case you would like\r\na specific user to review your work, you can assign it to them by using\r\n\r\n    r? <reviewer name>\r\n\r\nWhen merged, your PR's description becomes part of the commit message of a merge commit.\r\nIf you do not want certain parts of it (such as your LLM disclosure) to show up in the permanent git history,\r\nsurround them with a pair of HTML comments containing `homu-ignore:start` and `homu-ignore:end`.\r\n-->\r\n<!-- homu-ignore:end -->\r\n\r\nThis PR tries to fix the issue rust-lang/rust#164904 and rust-lang/rust#165076. When I was reviewing the missing safety doc of unsafe trait in std, I found that `ReverseSearcher ` and `Searcher` are not marker trait. They provide safe methods but they are unsafe trait without safety requirements. Then I found these two issues so I tried to fix these.\r\n\r\nI open a topic in Zulipchat: [Soundness issue about Pattern and Search](https://rust-lang.zulipchat.com/#narrow/channel/219381-t-libs/topic/Soundness.20issue.20about.20Pattern.20and.20Search/with/638725746).\r\n\r\nAccording to the topic, what I do in this PR are:\r\n\r\n1. Adding safety requirements for `Search` and `ReverseSearcher`. Concretely, I imitate the write style of Rust-for-linux(I did many research about the safety doc of Rust-for-linux) by using `Guarantees` to describe that the requirements implementors should follow. It seems that there are duplication(`next_match`, `next_reject`, `next_match_back`, `next_reject_back` share the same guarantees), so it can be improved.\r\n2. Marking `Pattern` as unsafe, and adding safety requirements for `Pattern`. In particularly, I think `Pattern` need to ensure that `[into_searcher](https://doc.rust-lang.org/nightly/core/str/pattern/trait.Pattern.html#tymethod.into_searcher)` does return the searcher that search pattern for the given string.",
+    "nwo": "rust-lang/rust"
+  }
+]

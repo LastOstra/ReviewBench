@@ -1,0 +1,33 @@
+{
+  "pr_key": "asterinas_asterinas_1822-b223ef03",
+  "pr": {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 1822,
+    "base": "56b85cb132e54cc51522e6444bc17f9e00eb2ee3",
+    "head": "b223ef0352cf4cc0c6d75fe781d83c8226e7d2f8"
+  },
+  "findings": [
+    {
+      "file": "ostd/src/mm/page_table/cursor.rs",
+      "start_line": 191,
+      "end_line": 191,
+      "message": "We need at least one Release/Acquire operation so that `Cursor` can see a valid page table node created by `CursorMut`. Otherwise, due to the lack of Release/Acquire synchronization, `Cursor` may see a garbage page that contains nothing valid.\r\n\r\n - Neither `PodOnce` nor `read_volatile`/`write_volatile` can provide this Release/Acquire semantics, so I think it is literally wrong to do this.\r\n\r\n[Also, `read_volatile`/`write_volatile` cannot solve a data race problem at all.](https://doc.rust-lang.org/std/ptr/fn.read_volatile.html#safety) I think the official Miri feels the same way. While we can suppress such warnings on untyped memory, I don't think page tables are untyped. So if volatile operations cause data races on page tables, I think KernMiri should report them as soundness problems.",
+      "tp_fp": "tp",
+      "severity": "high",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "hard",
+      "context_required": "diff-plus-related-files",
+      "tp_fp_justification": "lrh2000 (reply in thread rooted at tatetian's question 1947498949): PodOnce's volatile read/write does not eliminate the data race nor provide Release/Acquire ordering, so a concurrent reader can observe a garbage page-table node pointer. Author accepts. The separate check-then-link concern (1947436045) was resolved by the author (lock already held) and is not recorded.",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "lrh2000",
+        "url": "https://github.com/asterinas/asterinas/pull/1822#discussion_r1947543134",
+        "created_at": "2025-02-08T08:31:38Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "b223ef0352cf4cc0c6d75fe781d83c8226e7d2f8"
+      }
+    }
+  ]
+}

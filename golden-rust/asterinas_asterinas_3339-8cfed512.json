@@ -1,0 +1,36 @@
+{
+  "pr_key": "asterinas_asterinas_3339-8cfed512",
+  "pr": {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 3339,
+    "base": "b23e91b8873ac818c56eec3ad95e90bdfccf5e9b",
+    "head": "8cfed512166b9e1fe0cc7dfd25f4476b6e46d57e"
+  },
+  "findings": [
+    {
+      "file": "ostd/src/arch/x86/tdx_guest.rs",
+      "start_line": 90,
+      "end_line": 94,
+      "message": "Is this safe? I believe not. If so,\r\n\r\n```suggestion\r\n/// # Safety\r\n///\r\n/// The caller must ensure that `start_gpa..end_gpa` represents a valid GPA\r\n/// region that can be safely converted to `target_state`.\r\nunsafe fn convert_gpa_range(\r\n```\r\n\r\nAlso at the caller:\r\n```c\r\n        // SAFETY: The caller ensures the safety of this operation.\r\n```",
+      "tp_fp": "tp",
+      "severity": "high",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "medium",
+      "context_required": "diff-plus-related-files",
+      "tp_fp_justification": "lrh2000: convert_gpa_range remains a safe fn despite performing a TDX hypercall that converts GPA ranges between private/shared with no Safety contract; it must be unsafe. Author eventually made it unsafe. Exam head switched to 8cfed51216 where the comment anchors (L90-94, API-confirmed); the earlier Overflow/debug_assert finding (3378270336) was already fixed at this head and is dropped.",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "lrh2000",
+        "url": "https://github.com/asterinas/asterinas/pull/3339#discussion_r3379140710",
+        "created_at": "2026-06-09T08:41:11Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "8cfed512166b9e1fe0cc7dfd25f4476b6e46d57e",
+        "original_start_line": 90,
+        "original_end_line": 90,
+        "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
+      }
+    }
+  ]
+}

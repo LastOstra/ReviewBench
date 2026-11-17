@@ -1,0 +1,33 @@
+{
+  "pr_key": "rust-lang_rust_129838-ab840e05",
+  "pr": {
+    "repo": "https://github.com/rust-lang/rust",
+    "pr_number": 129838,
+    "base": "d571ae851d93541bef826c3c48c1e9ad99da77d6",
+    "head": "ab840e05d2715d48a8e9600912283a539c1afad5"
+  },
+  "findings": [
+    {
+      "file": "library/std/src/sys/pal/uefi/process.rs",
+      "start_line": 463,
+      "end_line": 464,
+      "message": "This invalidates `ptr` as it moves the `Box`. Use `Box::into_raw` instead:\r\n```suggestion\r\n            let ptr = Box::into_raw(args).as_mut_ptr();\r\n```",
+      "tp_fp": "tp",
+      "severity": "high",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "hard",
+      "context_required": "diff-plus-related-files",
+      "tp_fp_justification": "joboet: taking as_mut_ptr of a Box and then mem::forget-ing/moving the Box invalidates the pointer under Stacked Borrows (UB); Box::into_raw must be used instead. Other 3 comments in the PR not recorded.",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "joboet",
+        "url": "https://github.com/rust-lang/rust/pull/129838#discussion_r1795056092",
+        "created_at": "2024-10-10T09:28:49Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "ab840e05d2715d48a8e9600912283a539c1afad5"
+      }
+    }
+  ]
+}

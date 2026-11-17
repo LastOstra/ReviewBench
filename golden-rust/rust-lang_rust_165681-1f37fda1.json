@@ -1,0 +1,55 @@
+{
+  "pr_key": "rust-lang_rust_165681-1f37fda1",
+  "pr": {
+    "repo": "https://github.com/rust-lang/rust",
+    "pr_number": 165681,
+    "base": "4de0e38612353dc524009a12ad43f0c05a5f8c6e",
+    "head": "1f37fda1868d8c7ba543a2901fe102224765d205"
+  },
+  "findings": [
+    {
+      "file": "library/core/src/str/pattern.rs",
+      "start_line": 112,
+      "end_line": 112,
+      "message": "Can you elaborate on what this means? I would say something like \"`.haystack()` on the returned searcher must return the same haystack that was passed into this method\"",
+      "tp_fp": "tp",
+      "severity": "medium",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "medium",
+      "context_required": "diff-plus-related-files",
+      "tp_fp_justification": "maxdexh: the Guarantees section of the unsafe trait into_searcher must explicitly state that haystack() returns the same slice passed in; the safety contract as written is imprecise. Author updated. Unsafe-trait soundness contract, not mere documentation.",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "maxdexh",
+        "url": "https://github.com/rust-lang/rust/pull/165681#discussion_r4523383007",
+        "created_at": "2026-11-10T09:49:17Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "1f37fda1868d8c7ba543a2901fe102224765d205"
+      }
+    },
+    {
+      "file": "library/core/src/str/pattern.rs",
+      "start_line": 291,
+      "end_line": 291,
+      "message": "You phrased it as \"guarantees\", which means something that can be relied on. The way this is phrased means that you can't rely on the default impl satisfying them.\n\nMaybe instead, you can write in the `# Safety` section of the trait that the default methods automatically satisfy their guarantees?",
+      "tp_fp": "tp",
+      "severity": "medium",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "medium",
+      "context_required": "diff-plus-related-files",
+      "tp_fp_justification": "maxdexh (reply; root 4523410596 is a question): the guarantees/requirements semantics are reversed in the unsafe trait docs, misstating who must uphold what. Author fixed. Unsafe-trait safety-contract precision.",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "maxdexh",
+        "url": "https://github.com/rust-lang/rust/pull/165681#discussion_r4523903013",
+        "created_at": "2026-11-10T10:43:34Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "1f37fda1868d8c7ba543a2901fe102224765d205"
+      }
+    }
+  ]
+}

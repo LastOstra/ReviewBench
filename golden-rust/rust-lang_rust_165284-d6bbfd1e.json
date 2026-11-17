@@ -1,0 +1,36 @@
+{
+  "pr_key": "rust-lang_rust_165284-d6bbfd1e",
+  "pr": {
+    "repo": "https://github.com/rust-lang/rust",
+    "pr_number": 165284,
+    "base": "f90a2d27c2a1e18f10f4fd84c0dcd02710c37de8",
+    "head": "d6bbfd1e10a3078e37db546f7d0b76bfdc2f419b"
+  },
+  "findings": [
+    {
+      "file": "library/core/src/fmt/num.rs",
+      "start_line": 355,
+      "end_line": 355,
+      "message": "https://github.com/rust-lang/rust/blob/d6bbfd1e10a3078e37db546f7d0b76bfdc2f419b/library/core/src/fmt/num.rs#L621\r\n\r\nsmaller types are delegated to u32/u64 on 32/64bit, so this will assert u32/u64 buffer size for e.g. u8, so\r\n\r\n```rs\r\n    let mut buf = NumBuffer::<u8>::new();\r\n    let s = 7u8.format_into(&mut buf);\r\n```\r\n\r\npanics here. Not sure if there is a way that works without just making this function `unsafe` and moving the safety assertion to the call in the _small function below?\n\n*[View changes since the review](https://triagebot.infra.rust-lang.org/gh-changes-since/rust-lang/rust/165284/349bba62f1838cbd9b453ffda272c6972754122d..d6bbfd1e10a3078e37db546f7d0b76bfdc2f419b)*",
+      "tp_fp": "tp",
+      "severity": "high",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "easy",
+      "context_required": "diff-only",
+      "tp_fp_justification": "seritools: the assert uses $T::MAX.ilog10 for the buffer bound, but u8/u16 delegate to the larger-type implementation, so e.g. 7u8.format_into() always panics.",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "seritools",
+        "url": "https://github.com/rust-lang/rust/pull/165284#discussion_r4436561403",
+        "created_at": "2026-11-01T17:05:10Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "d6bbfd1e10a3078e37db546f7d0b76bfdc2f419b",
+        "original_start_line": 351,
+        "original_end_line": 355,
+        "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
+      }
+    }
+  ]
+}

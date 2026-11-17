@@ -1,0 +1,36 @@
+{
+  "pr_key": "asterinas_asterinas_2342-e1163681",
+  "pr": {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 2342,
+    "base": "3882eb40000826020c6ffe5026e0f8d6ecb3b902",
+    "head": "e1163681edd747b352745b9dfeaf333f2be7c71b"
+  },
+  "findings": [
+    {
+      "file": "kernel/src/fs/file_table.rs",
+      "start_line": 55,
+      "end_line": 60,
+      "message": "Either the semantics or the implementation of this method is flawed. Before this method is called, the file table could have any number of file descriptors. So appending three entries to such a file table may not necessarily set the stdin, stdout, and stderr FDs.\r\n\r\nI think you should remove `set_stdio` from `FileTable` and implement the same logic in the parent module's `init_in_first_process` function, which is the only caller of this function. The context of this caller guarantees that the file table is empty initially.",
+      "tp_fp": "tp",
+      "severity": "medium",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "medium",
+      "context_required": "diff-plus-related-files",
+      "tp_fp_justification": "set_stdio appends stdin/stdout/stderr entries with self.table.put, but the table may already contain arbitrary fds, so the three entries are not guaranteed to occupy fds 0/1/2 (tatetian: 'Either the semantics or the implementation of this method is flawed'). Method introduced/moved by this PR.",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "tatetian",
+        "url": "https://github.com/asterinas/asterinas/pull/2342#discussion_r2299580220",
+        "created_at": "2025-08-26T02:31:37Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "e1163681edd747b352745b9dfeaf333f2be7c71b",
+        "original_start_line": 56,
+        "original_end_line": 56,
+        "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
+      }
+    }
+  ]
+}

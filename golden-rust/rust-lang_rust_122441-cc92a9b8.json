@@ -1,0 +1,102 @@
+{
+  "pr_key": "rust-lang_rust_122441-cc92a9b8",
+  "pr": {
+    "repo": "https://github.com/rust-lang/rust",
+    "pr_number": 122441,
+    "base": "9ce37dc7290e60bd0dfc7a5d4fcdbbd836f989f0",
+    "head": "cc92a9b8267beddb181fd7598d85dccae6fdbb96"
+  },
+  "findings": [
+    {
+      "file": "library/std/src/io/mod.rs",
+      "start_line": 2929,
+      "end_line": 2931,
+      "message": "Shouldn't `read_exact` return an `Err` if it does not read exactly `buf.len()` bytes?",
+      "tp_fp": "tp",
+      "severity": "medium",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "easy",
+      "context_required": "diff-only",
+      "tp_fp_justification": "zachs18: Take::read_exact returns Ok early when limit == 0, violating the read_exact contract (must fill the buffer or error). API-confirmed lines.",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "zachs18",
+        "url": "https://github.com/rust-lang/rust/pull/122441#discussion_r1524151302",
+        "created_at": "2024-03-14T03:18:50Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "cc92a9b8267beddb181fd7598d85dccae6fdbb96"
+      }
+    },
+    {
+      "file": "library/std/src/io/mod.rs",
+      "start_line": 2934,
+      "end_line": 2934,
+      "message": "```suggestion\r\n        if self.limit >= len {\r\n```\r\nOtherwise, this will return `Err(EOF)` when the limit is exactly enough.",
+      "tp_fp": "tp",
+      "severity": "medium",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "easy",
+      "context_required": "diff-only",
+      "tp_fp_justification": "zachs18: the limit comparison uses `>` where `>=` is required, allowing one extra byte past the Take limit. API-confirmed line.",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "zachs18",
+        "url": "https://github.com/rust-lang/rust/pull/122441#discussion_r1524152151",
+        "created_at": "2024-03-14T03:20:29Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "cc92a9b8267beddb181fd7598d85dccae6fdbb96"
+      }
+    },
+    {
+      "file": "library/std/src/io/mod.rs",
+      "start_line": 2936,
+      "end_line": 2936,
+      "message": "```suggestion\r\n            self.limit -= len;\r\n```",
+      "tp_fp": "tp",
+      "severity": "medium",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "easy",
+      "context_required": "diff-only",
+      "tp_fp_justification": "zachs18: the remaining limit is updated with `+=` instead of `-=`, growing the limit instead of consuming it. API-confirmed line.",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "zachs18",
+        "url": "https://github.com/rust-lang/rust/pull/122441#discussion_r1524151528",
+        "created_at": "2024-03-14T03:19:16Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "cc92a9b8267beddb181fd7598d85dccae6fdbb96"
+      }
+    },
+    {
+      "file": "library/std/src/io/mod.rs",
+      "start_line": 2990,
+      "end_line": 3004,
+      "message": "(same comments as above on `Take::read_exact`)",
+      "tp_fp": "tp",
+      "severity": "medium",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "easy",
+      "context_required": "diff-only",
+      "tp_fp_justification": "zachs18 on Take::read_buf_exact: '(same comments as above on Take::read_exact)' — the mirrored implementation repeats all three defects (early Ok at limit==0 L2992-2994, `>` vs `>=` L2997, `+=` vs `-=` L2999). API-confirmed range.",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "zachs18",
+        "url": "https://github.com/rust-lang/rust/pull/122441#discussion_r1524153826",
+        "created_at": "2024-03-14T03:24:23Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "cc92a9b8267beddb181fd7598d85dccae6fdbb96",
+        "original_start_line": 2993,
+        "original_end_line": 2993,
+        "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
+      }
+    }
+  ]
+}

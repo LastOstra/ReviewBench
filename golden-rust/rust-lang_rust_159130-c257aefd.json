@@ -1,0 +1,33 @@
+{
+  "pr_key": "rust-lang_rust_159130-c257aefd",
+  "pr": {
+    "repo": "https://github.com/rust-lang/rust",
+    "pr_number": 159130,
+    "base": "ad49852b6f3dd9c1c73fe909d8843bb7e464b387",
+    "head": "c257aefd56c79af1ac53265f74d225c9660c70bd"
+  },
+  "findings": [
+    {
+      "file": "library/core/src/fmt/num.rs",
+      "start_line": 846,
+      "end_line": 846,
+      "message": "I don't know if std has some special convention, but does this function have to become unsafe?\nSince it now depends on the caller not passing `n >= 10_000_000_000_000_000` otherwise UB happens.\n\n*[View changes since the review](https://triagebot.infra.rust-lang.org/gh-changes-since/rust-lang/rust/159130/3b58636b30eb364ac72aeaf03d46347084ed87d1..c257aefd56c79af1ac53265f74d225c9660c70bd)*",
+      "tp_fp": "tp",
+      "severity": "high",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "medium",
+      "context_required": "diff-plus-related-files",
+      "tp_fp_justification": "inkreasing: enc_16lsd is a safe fn containing assert_unchecked, pushing its precondition onto callers without an unsafe marker; it should be unsafe. clarfonthey confirms (3677054664).",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "inkreasing",
+        "url": "https://github.com/rust-lang/rust/pull/159130#discussion_r3676975528",
+        "created_at": "2026-07-29T18:16:54Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "c257aefd56c79af1ac53265f74d225c9660c70bd"
+      }
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "pr_key": "asterinas_asterinas_1861-d5569147",
+  "pr": {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 1861,
+    "base": "56b85cb132e54cc51522e6444bc17f9e00eb2ee3",
+    "head": "d5569147cb121ba367c104bc6b7a5fbf291efc06"
+  },
+  "findings": [
+    {
+      "file": "kernel/src/process/exit.rs",
+      "start_line": 61,
+      "end_line": 64,
+      "message": "If the reaper process is zombie itself, we should directly find upward until first living reaper process, right? Otherwise, the code in line 100-105 can be an endless loop.",
+      "tp_fp": "tp",
+      "severity": "high",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "medium",
+      "context_required": "diff-only",
+      "tp_fp_justification": "find_reaper_process returns a subreaper even if it is a zombie; move_children_to_reaper_process then loops forever because move_process_children keeps failing on the same zombie reaper (StevenJiang1110: 'the code in line 100-105 can be an endless loop'). New logic in this PR.",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "StevenJiang1110",
+        "url": "https://github.com/asterinas/asterinas/pull/1861#discussion_r1971071488",
+        "created_at": "2025-02-26T07:29:46Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "d5569147cb121ba367c104bc6b7a5fbf291efc06",
+        "original_start_line": 65,
+        "original_end_line": 65,
+        "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
+      }
+    },
+    {
+      "file": "kernel/src/syscall/prctl.rs",
+      "start_line": 123,
+      "end_line": 123,
+      "message": "Should be `process.children()` instead of `current_process.children()` here?",
+      "tp_fp": "tp",
+      "severity": "medium",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "easy",
+      "context_required": "diff-only",
+      "tp_fp_justification": "In propagate_has_child_subreaper's BFS loop, `current_process.children()` is locked again instead of `process.children()`, so propagation never reaches grandchildren (StevenJiang1110: 'Should be process.children() instead of current_process.children() here?'). New function in this PR.",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "StevenJiang1110",
+        "url": "https://github.com/asterinas/asterinas/pull/1861#discussion_r1971121979",
+        "created_at": "2025-02-26T08:11:28Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "d5569147cb121ba367c104bc6b7a5fbf291efc06"
+      }
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "pr_key": "asterinas_asterinas_2445-b842e92e",
+  "pr": {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 2445,
+    "base": "b0407dd5173552b59cf08f84a5e44914b60e67bd",
+    "head": "b842e92e3978c2655c56f3fe76f3671221675735"
+  },
+  "findings": [
+    {
+      "file": "kernel/src/fs/path/resolver.rs",
+      "start_line": 309,
+      "end_line": 309,
+      "message": "This will deadlock due to issues with the lock order. You are locking two resolvers (this one and the current thread's solver) simultaneously without specifying an order. ",
+      "tp_fp": "tp",
+      "severity": "high",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "hard",
+      "context_required": "diff-plus-related-files",
+      "tp_fp_justification": "lrh2000: acquiring a second fs resolver write lock (`let mut fs_resolver = fs.resolver().write();`) while already holding one creates a lock-ordering deadlock between two resolvers. Confirmed present at exam_head L309.",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "lrh2000",
+        "url": "https://github.com/asterinas/asterinas/pull/2445#discussion_r2767587651",
+        "created_at": "2026-02-05T07:51:04Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "b842e92e3978c2655c56f3fe76f3671221675735"
+      }
+    },
+    {
+      "file": "kernel/src/fs/path/resolver.rs",
+      "start_line": 288,
+      "end_line": 289,
+      "message": "How about quoting the system call arguments in back ticks and using a format similar to the ERRORS section of the [man pages](https://man7.org/linux/man-pages/man2/pivot_root.2.html):\r\n```patch\r\ndiff --git a/kernel/src/fs/path/resolver.rs b/kernel/src/fs/path/resolver.rs\r\nindex a625f38f2..dbe2d932b 100644\r\n--- a/kernel/src/fs/path/resolver.rs\r\n+++ b/kernel/src/fs/path/resolver.rs\r\n@@ -245,16 +245,19 @@ impl PathResolver {\r\n         let put_old_path = self.lookup(&put_old_path)?;\r\n \r\n         if new_root_path.type_() != InodeType::Dir || put_old_path.type_() != InodeType::Dir {\r\n-            return_errno_with_message!(Errno::ENOTDIR, \"new_root and put_old must be directories\");\r\n+            return_errno_with_message!(\r\n+                Errno::ENOTDIR,\r\n+                \"`new_root` or `put_old` is not a directory\"\r\n+            );\r\n         }\r\n         if self.root.mount.id() == new_root_path.mount.id() {\r\n-            return_errno_with_message!(Errno::EBUSY, \"new_root is the current root\");\r\n+            return_errno_with_message!(Errno::EBUSY, \"`new_root` is on the current root mount\");\r\n         }\r\n         if !new_root_path.is_mount_root() {\r\n-            return_errno_with_message!(Errno::EINVAL, \"new_root must be a mountpoint\");\r\n+            return_errno_with_message!(Errno::EINVAL, \"`new_root` is not a mount point\");\r\n         }\r\n         if new_root_path.mount.parent().is_none() {\r\n-            return_errno_with_message!(Errno::EINVAL, \"cannot pivot_root to root mount\");\r\n+            return_errno_with_message!(Errno::EINVAL, \"`new_root` is on the rootfs mount\");\r\n         }\r\n \r\n         let current_ns_proxy = ctx.thread_local.borrow_ns_proxy();\r\n@@ -262,21 +265,24 @@ impl PathResolver {\r\n         if !current_mnt_ns.owns(&new_root_path.mount) || !current_mnt_ns.owns(&put_old_path.mount) {\r\n             return_errno_with_message!(\r\n                 Errno::EINVAL,\r\n-                \"new_root and put_old must be in the current mount namespace\"\r\n+                \"`new_root` or `put_old` is not in the current mount namespace\"\r\n             );\r\n         }\r\n \r\n         if new_root_path.mount.id() != put_old_path.mount.id() {\r\n             return_errno_with_message!(\r\n                 Errno::EINVAL,\r\n-                \"put_old must be on the same mount as new_root\"\r\n+                \"`put_old` is not on the same mount as `new_root`\"\r\n             );\r\n         }\r\n         if !put_old_path\r\n             .dentry\r\n             .is_equal_or_descendant_of(&new_root_path.dentry)\r\n         {\r\n-            return_errno_with_message!(Errno::EINVAL, \"put_old must be underneath new_root\");\r\n+            return_errno_with_message!(\r\n+                Errno::EINVAL,\r\n+                \"`put_old` is not at or underneath `new_root`\"\r\n+            );\r\n         }\r\n \r\n         // TODO: The propagation type of the parent mount of new_root and the\r\n```\r\n\r\n---\r\n\r\nIn addition, I think you miss the following checks. If you don't check `self.root`, some panics below may be reachable.\r\n```patch\r\ndiff --git a/kernel/src/fs/path/resolver.rs b/kernel/src/fs/path/resolver.rs\r\nindex dbe2d932b..cf2a15a98 100644\r\n--- a/kernel/src/fs/path/resolver.rs\r\n+++ b/kernel/src/fs/path/resolver.rs\r\n@@ -250,14 +250,25 @@ impl PathResolver {\r\n                 \"`new_root` or `put_old` is not a directory\"\r\n             );\r\n         }\r\n-        if self.root.mount.id() == new_root_path.mount.id() {\r\n-            return_errno_with_message!(Errno::EBUSY, \"`new_root` is on the current root mount\");\r\n+        if self.root.mount.id() == new_root_path.mount.id()\r\n+            || self.root.mount.id() == put_old_path.mount.id()\r\n+        {\r\n+            return_errno_with_message!(\r\n+                Errno::EBUSY,\r\n+                \"`new_root` or `put_old` is on the current root mount\"\r\n+            );\r\n         }\r\n-        if !new_root_path.is_mount_root() {\r\n-            return_errno_with_message!(Errno::EINVAL, \"`new_root` is not a mount point\");\r\n+        if !new_root_path.is_mount_root() || !self.root.is_mount_root() {\r\n+            return_errno_with_message!(\r\n+                Errno::EINVAL,\r\n+                \"`new_root` or the current root is not a mount point\"\r\n+            );\r\n         }\r\n-        if new_root_path.mount.parent().is_none() {\r\n-            return_errno_with_message!(Errno::EINVAL, \"`new_root` is on the rootfs mount\");\r\n+        if new_root_path.mount.parent().is_none() || self.root.mount.parent().is_none() {\r\n+            return_errno_with_message!(\r\n+                Errno::EINVAL,\r\n+                \"`new_root` or the current root is on the rootfs mount\"\r\n+            );\r\n         }\r\n \r\n         let current_ns_proxy = ctx.thread_local.borrow_ns_proxy();\r\n```\r\n\r\n\r\nPlease double-check the man pages and/or the Linux implementation:",
+      "tp_fp": "tp",
+      "severity": "medium",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "medium",
+      "context_required": "diff-plus-related-files",
+      "tp_fp_justification": "lrh2000: 'In addition, I think you miss the following checks. If you don't check self.root, some panics below may be reachable.' The validation block (L250-258) lacks a self.root branch, so `self.root.mount.parent().unwrap().upgrade().unwrap()` / `mountpoint().unwrap()` at L288-289 can panic. Comment anchored at L248; defect at L288-289 (API-confirmed).",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "lrh2000",
+        "url": "https://github.com/asterinas/asterinas/pull/2445#discussion_r2769238957",
+        "created_at": "2026-02-05T13:41:10Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "b842e92e3978c2655c56f3fe76f3671221675735",
+        "original_start_line": 248,
+        "original_end_line": 248,
+        "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
+      }
+    }
+  ]
+}

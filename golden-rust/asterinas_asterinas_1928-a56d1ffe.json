@@ -1,0 +1,36 @@
+{
+  "pr_key": "asterinas_asterinas_1928-a56d1ffe",
+  "pr": {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 1928,
+    "base": "9872adaa718b6b98d99a564cd4f6f716757d4830",
+    "head": "a56d1ffea6ba140c20fb3eb86251b8f536139d53"
+  },
+  "findings": [
+    {
+      "file": "ostd/src/task/atomic_mode.rs",
+      "start_line": 82,
+      "end_line": 86,
+      "message": "> ```rust\r\n>     pub fn read_with<'a, G: AsAtomicModeGuard>(&'a self, guard: &'a G) -> &'a <P as OwnerPtr>::Target {\r\n>         let atomic_mode_guard = guard.as_atomic_mode_guard();\r\n> ```\r\n\r\nWow. I think that's actually a good catch for another soundness issue that I completely missed.\r\n\r\nI tried very hard to think if the previous `BorrowAsAtomicModeGuard` was sound. But I missed a counterexample. Your code gives me more insight.\r\n\r\nIt's pretty easy:\r\n```rust\r\nstruct AtomicModeGuard;\r\n\r\ntrait BorrowAsAtomicModeGuard {\r\n    fn borrow(&self) -> &AtomicModeGuard;\r\n}\r\n\r\nstruct FakeGuard;\r\n\r\nimpl BorrowAsAtomicModeGuard for FakeGuard {\r\n    fn borrow(&self) -> &AtomicModeGuard {\r\n        todo!()\r\n    }\r\n}\r\n```\r\n\r\n*We really need to run the `as_atomic_mode_guard` method first before assuming we're in atomic mode!*",
+      "tp_fp": "tp",
+      "severity": "high",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "hard",
+      "context_required": "diff-plus-related-files",
+      "tp_fp_justification": "lrh2000's counterexample: the blanket `unsafe impl<G> AtomicModeGuard for G where G: BorrowAsAtomicModeGuard {}` is unsound because BorrowAsAtomicModeGuard is a safe trait; a FakeGuard whose as_atomic_mode_guard is todo!() (or returns a fake guard) satisfies it, defeating the atomic-mode guarantee. Author agrees to remove (2011537030/2011544998), tatetian concurs. Defect is the blanket impl at L82-86, comment anchored at L79.",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "lrh2000",
+        "url": "https://github.com/asterinas/asterinas/pull/1928#discussion_r2011521104",
+        "created_at": "2025-03-25T08:02:02Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "a56d1ffea6ba140c20fb3eb86251b8f536139d53",
+        "original_start_line": 79,
+        "original_end_line": 79,
+        "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
+      }
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "pr_key": "rust-lang_rust_139632-694a6b9f",
+  "pr": {
+    "repo": "https://github.com/rust-lang/rust",
+    "pr_number": 139632,
+    "base": "7d7de5bf3c3cbf9c2c5bbc5cbfb9197a8a427d35",
+    "head": "694a6b9f8bc911536eaefdcd0ab470849030937d"
+  },
+  "findings": [
+    {
+      "file": "library/core/src/fmt/rt.rs",
+      "start_line": 98,
+      "end_line": 98,
+      "message": "in an earlier version of this PR, you had to remove the `mem` import from the crate root to avoid an unused warning. won't that now trigger when building with cfi or kcfi?",
+      "tp_fp": "tp",
+      "severity": "low",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "medium",
+      "context_required": "diff-plus-related-files",
+      "tp_fp_justification": "tamird: under CFI/KCFI builds the mem import becomes unused (the transmute branch is cfg'd out), triggering an unused-import warning; author: 'Yes, good point. Updated.' (fixed by using the full path core::mem::transmute). The feature-gate removal comment (2042159720) was dropped as cleanup.",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "tamird",
+        "url": "https://github.com/rust-lang/rust/pull/139632#discussion_r2042177340",
+        "created_at": "2025-04-14T13:44:37Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "694a6b9f8bc911536eaefdcd0ab470849030937d"
+      }
+    }
+  ]
+}

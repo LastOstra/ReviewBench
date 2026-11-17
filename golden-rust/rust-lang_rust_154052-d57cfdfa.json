@@ -1,0 +1,33 @@
+{
+  "pr_key": "rust-lang_rust_154052-d57cfdfa",
+  "pr": {
+    "repo": "https://github.com/rust-lang/rust",
+    "pr_number": 154052,
+    "base": "53d60bb1c5d325b43419c7618287a1405dec36d0",
+    "head": "d57cfdfad02e9cae75874412c0df06986938a377"
+  },
+  "findings": [
+    {
+      "file": "library/core/src/fmt/float.rs",
+      "start_line": 175,
+      "end_line": 175,
+      "message": "This change will work on most platforms, but usize is only guaranteed to be 16 bits, so this is not a proper fix.",
+      "tp_fp": "tp",
+      "severity": "medium",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "medium",
+      "context_required": "diff-plus-related-files",
+      "tp_fp_justification": "hkBst: the overflow fix is incomplete — on 16-bit usize targets the computation can still overflow.",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "hkBst",
+        "url": "https://github.com/rust-lang/rust/pull/154052#discussion_r2961376297",
+        "created_at": "2026-03-19T16:50:09Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "d57cfdfad02e9cae75874412c0df06986938a377"
+      }
+    }
+  ]
+}
