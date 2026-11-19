@@ -1,4 +1,5 @@
 node_modules/
+rust-set-work/
 scoring/
 findings/
 .reviewbench-repos/
@@ -10,3 +11,4 @@ runs/
 build/
 *.egg-info/
 __pycache__/
+.local-run/
