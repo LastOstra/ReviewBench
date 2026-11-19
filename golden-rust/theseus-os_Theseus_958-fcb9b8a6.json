@@ -1,0 +1,86 @@
+{
+  "pr_key": "theseus-os_Theseus_958-fcb9b8a6",
+  "pr": {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 958,
+    "base": "40805a7934710f16f90000f65497d3a61bb7b681",
+    "head": "fcb9b8a69ddfacf4c1ea71147bc7e6916d159577"
+  },
+  "findings": [
+    {
+      "file": "kernel/ixgbe/src/lib.rs",
+      "start_line": 995,
+      "end_line": 998,
+      "message": "return a result instead of panicking",
+      "tp_fp": "tp",
+      "severity": "medium",
+      "category": "reliability",
+      "scope": "introduced-by-pr",
+      "difficulty": "easy",
+      "context_required": "diff-plus-related-files",
+      "tp_fp_justification": "enable_rx_dca 把永不 panic 的 unwrap_or(0) 改为 bootstrap_cpu().expect(...)，BSP CpuId 不可读时 NIC 初始化路径 panic，而函数应返回 Result。作者在 9446f3dd28 改为 .ok_or(...)?。",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "kevinaboos",
+        "url": "https://github.com/theseus-os/Theseus/pull/958#discussion_r1204891608",
+        "created_at": "2023-05-25T01:02:41Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "fcb9b8a69ddfacf4c1ea71147bc7e6916d159577",
+        "original_start_line": 997,
+        "original_end_line": 997,
+        "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
+      }
+    },
+    {
+      "file": "kernel/ixgbe/src/lib.rs",
+      "start_line": 1177,
+      "end_line": 1180,
+      "message": "return result",
+      "tp_fp": "tp",
+      "severity": "medium",
+      "category": "reliability",
+      "scope": "introduced-by-pr",
+      "difficulty": "easy",
+      "context_required": "diff-plus-related-files",
+      "tp_fp_justification": "MSI 中断设置循环同样把 unwrap_or(0) 改为 expect，可触发路径 panic 而外层返回 Result 应传播错误。作者在 9446f3dd28 一并修复。",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "kevinaboos",
+        "url": "https://github.com/theseus-os/Theseus/pull/958#discussion_r1204892741",
+        "created_at": "2023-05-25T01:05:19Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "fcb9b8a69ddfacf4c1ea71147bc7e6916d159577",
+        "original_start_line": 1179,
+        "original_end_line": 1179,
+        "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
+      }
+    },
+    {
+      "file": "kernel/pci/src/lib.rs",
+      "start_line": 538,
+      "end_line": 541,
+      "message": "does this always return an interrupt number? From the PCI docs on osdev wiki, i see this:\r\n> For the x86 architecture, this register corresponds to the PIC IRQ numbers 0-15 (and not I/O APIC IRQ numbers). A value of 0xFF defines no connection.\r\n\r\nSo we'd want to possibly handle the 0xFF case specially, perhaps with an option.\r\n\r\nAlso, this doesn't include the interrupt pin info, which is probably a good thing to return along with the interrupt line. So this function could be something more like `pci_get_interrupt_info()` that returns an interrupt line and interrupt pin.\r\n\r\nFor more, see osdev wiki again:\r\n\r\n> Specifies which interrupt pin the device uses. A value of 0x1 is INTA#, 0x2 is INTB#, 0x3 is INTC#, 0x4 is INTD#, and 0x0 means the device does not use an interrupt pin.\r\n\r\nAn enum for the interrupt pin would be the proper way to represent this. ",
+      "tp_fp": "tp",
+      "severity": "medium",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "medium",
+      "context_required": "diff-only",
+      "tp_fp_justification": "新增 pci_get_interrupt_line 把寄存器原始值当有效 InterruptNumber 返回，PCI 规范 0xFF 表示无中断连接，调用方会注册错误 IRQ。作者 'Sure, I'll change it' 并在 ed61b8703a 以 pci_get_interrupt_info 替换（0xFF→None）。",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "kevinaboos",
+        "url": "https://github.com/theseus-os/Theseus/pull/958#discussion_r1204886339",
+        "created_at": "2023-05-25T00:49:19Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "fcb9b8a69ddfacf4c1ea71147bc7e6916d159577",
+        "original_start_line": 538,
+        "original_end_line": 539,
+        "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
+      }
+    }
+  ]
+}

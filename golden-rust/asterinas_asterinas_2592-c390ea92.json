@@ -1,0 +1,36 @@
+{
+  "pr_key": "asterinas_asterinas_2592-c390ea92",
+  "pr": {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 2592,
+    "base": "314fbe285a656cea82344b4c121cb061a6d41224",
+    "head": "c390ea92ffcf11b143a926ff8756e7e55b50a0c5"
+  },
+  "findings": [
+    {
+      "file": "kernel/src/fs/cgroupfs/systree_node.rs",
+      "start_line": 227,
+      "end_line": 240,
+      "message": "I don't believe this is correct. SIGSTOP notifies the parent process if the parent uses `wait()`. A process can resume after receiving `SIGSTOP` if someone sends a `SIGCONT` to it. However, it is unlikely that `cgroup.freeze` is the case.",
+      "tp_fp": "tp",
+      "severity": "medium",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "medium",
+      "context_required": "diff-plus-related-files",
+      "tp_fp_justification": "cgroup.freeze is implemented by sending SIGSTOP to each task in the frozen cgroup. This is semantically wrong: SIGSTOP notifies the parent via wait() and can be reversed with SIGCONT, but cgroup.freeze is an asynchronous, group-level freeze independent of parent process or signals. Linux uses a dedicated freezer mechanism that atomically stops all threads in the cgroup without signal interaction.",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "lrh2000",
+        "url": "https://github.com/asterinas/asterinas/pull/2592#discussion_r2574467113",
+        "created_at": "2025-11-30T18:29:51Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "c390ea92ffcf11b143a926ff8756e7e55b50a0c5",
+        "original_start_line": 234,
+        "original_end_line": 234,
+        "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
+      }
+    }
+  ]
+}

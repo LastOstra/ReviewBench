@@ -1,0 +1,36 @@
+{
+  "pr_key": "theseus-os_Theseus_985-d275d754",
+  "pr": {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 985,
+    "base": "490407b2be935197483f3c43433d72eff0273a4c",
+    "head": "d275d754fb0685777d20ed110b2b4d8f20fdb40e"
+  },
+  "findings": [
+    {
+      "file": "kernel/sync_block/src/lib.rs",
+      "start_line": 98,
+      "end_line": 106,
+      "message": "This is a nice design for undoing the effects of priority inheritance. It'd be even nicer to use a guard type such that the effects of priority inheritance can also be undone in the case of exceptional execution (unwinding after a panic). Should be easy enough to wrap up the returned closure in a struct that implements `Drop` too.",
+      "tp_fp": "tp",
+      "severity": "medium",
+      "category": "reliability",
+      "scope": "introduced-by-pr",
+      "difficulty": "medium",
+      "context_required": "diff-plus-related-files",
+      "tp_fp_justification": "优先级继承撤销实现为普通闭包而非 Drop guard，panic unwind 时不执行，持有者被提升的优先级永久残留。reviewer 指出 unwind 路径具体错误行为，作者在 01cfbc3e23 'Use guard' 改为 PriorityInheritanceGuard。措辞偏建议但缺陷具体，抽查时重点确认。",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "kevinaboos",
+        "url": "https://github.com/theseus-os/Theseus/pull/985#discussion_r1244168989",
+        "created_at": "2023-06-27T18:17:09Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "d275d754fb0685777d20ed110b2b4d8f20fdb40e",
+        "original_start_line": 99,
+        "original_end_line": 99,
+        "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
+      }
+    }
+  ]
+}

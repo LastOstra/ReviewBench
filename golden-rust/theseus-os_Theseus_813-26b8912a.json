@@ -1,0 +1,61 @@
+{
+  "pr_key": "theseus-os_Theseus_813-26b8912a",
+  "pr": {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 813,
+    "base": "2e8c8a6922a5d75e5f27eca24481ad2511184082",
+    "head": "26b8912ad7653e05291891223f7ae279823850b0"
+  },
+  "findings": [
+    {
+      "file": "kernel/sync_preemption/src/lib.rs",
+      "start_line": 14,
+      "end_line": 23,
+      "message": "as i mentioned in the comments on the `DeadlockPrevention` trait, this isn't correct, and unfortunately it cannot be correct due to a lacking interface. The issue here is that preemption can't just be arbitrarily enabled and disabled; to do it safely we need to maintain a count and ensure that it's only enabled or disabled when that count changes to or from 0.\r\n\r\nThat's the reason I introduced a `PreemptionGuard` type, and also why there is no other direct way to manually enable/disable preemption -- the guard type semantic is useless if there is also a broken way to circumvent it.\r\n\r\nThis is similar to what you said in your \"FIXME\" comment in the `DisableIrq` implementation; we should modify the `DeadlockPrevention` interface to allow guard types and other stateful contexts to be propagated across `enter` and `exit` calls.",
+      "tp_fp": "tp",
+      "severity": "high",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "medium",
+      "context_required": "diff-plus-related-files",
+      "tp_fp_justification": "本 PR 新增的 DisablePreemption enter() 直接 disable_preemption()、exit() 直接 enable，无嵌套计数，嵌套加锁时内层解锁过早重新启用抢占，破坏外层临界区。reviewer (kevinaboos) 指出必须维护计数并传递 guard，作者认可并在 0be13ad055 'Add Guard type to Flavour' 改用 PreemptionGuard 修复。",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "kevinaboos",
+        "url": "https://github.com/theseus-os/Theseus/pull/813#discussion_r1156515192",
+        "created_at": "2023-04-03T22:37:42Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "26b8912ad7653e05291891223f7ae279823850b0",
+        "original_start_line": 16,
+        "original_end_line": 16,
+        "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
+      }
+    },
+    {
+      "file": "libs/sync_irq/src/lib.rs",
+      "start_line": 14,
+      "end_line": 24,
+      "message": "yeah, i think this is a symptom of this trait design, where `DeadlockPrevention`'s methods are a bit too simple. See my comment there.",
+      "tp_fp": "tp",
+      "severity": "high",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "medium",
+      "context_required": "diff-plus-related-files",
+      "tp_fp_justification": "评论锚定本 PR 新增 DisableIrq::enter() 的 FIXME 'Recursive disabling doesn't work'：无状态 enter/exit 无法对嵌套 IRQ disable/enable 计数，内层锁释放过早开中断，破坏外层 IRQ 临界区。作者认可并随 Guard 接口重构（HeldInterrupts）修复。",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "kevinaboos",
+        "url": "https://github.com/theseus-os/Theseus/pull/813#discussion_r1156508134",
+        "created_at": "2023-04-03T22:24:59Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "26b8912ad7653e05291891223f7ae279823850b0",
+        "original_start_line": 16,
+        "original_end_line": 16,
+        "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
+      }
+    }
+  ]
+}

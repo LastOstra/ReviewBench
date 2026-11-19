@@ -1,0 +1,77 @@
+{
+  "pr_key": "theseus-os_Theseus_1019-ee27c46e",
+  "pr": {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 1019,
+    "base": "c741ecc4d31c6adc81f3b31188b0ee238118b632",
+    "head": "ee27c46eccb8880127525082f03ea5a4694bb93d"
+  },
+  "findings": [
+    {
+      "file": "kernel/pci/src/lib.rs",
+      "start_line": 82,
+      "end_line": 82,
+      "message": "this value is 0xFFFFFFFD, which doesn't match up with the comment. This mask value only clears bit 1, not bit 0 and bit 1. What is the desired behavior; does it differ on aarch64/MMIO?",
+      "tp_fp": "tp",
+      "severity": "high",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "easy",
+      "context_required": "diff-only",
+      "tp_fp_justification": "掩码改为 !0x2 (=0xFFFFFFFD) 只清 bit1 保留 bit0，与清最低两位做 4 字节对齐的契约不符，奇数偏移寄存器对齐/移位计算错误。作者 'You're completely right, I meant to write 0x3' 修复。",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "kevinaboos",
+        "url": "https://github.com/theseus-os/Theseus/pull/1019#discussion_r1274224589",
+        "created_at": "2023-07-25T23:54:25Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "ee27c46eccb8880127525082f03ea5a4694bb93d"
+      }
+    },
+    {
+      "file": "kernel/pci/src/lib.rs",
+      "start_line": 287,
+      "end_line": 289,
+      "message": "hmm, i'm not sure that this is correct or even sound. Two things:\r\n1. Don't you have to write to the ADDRESS port and then read from the DATA port, just like on x86 with port I/O?\r\n2. You're accessing the cfg space like it's just a static chunk of memory, but it's not. At the very least, you need to use volatile operations to ensure the compiler doesn't remove/optimize out the memory reads here. The config space can be written to and read from interactively, i.e., its values may change depending on what you write to it. So you need to ensure that every read and write operation is done using the proper two-step sequence of instructions (write the address, then read/write the data).",
+      "tp_fp": "tp",
+      "severity": "medium",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "medium",
+      "context_required": "diff-plus-related-files",
+      "tp_fp_justification": "aarch64 配置空间读用非 volatile copy_from_slice，编译器可优化/重排掉 MMIO 读。作者 'You're fully right' 并在 84860ad1ec 改 volatile（端口时序部分被作者以 ECAM 反驳，不影响 volatile 缺陷）。",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "kevinaboos",
+        "url": "https://github.com/theseus-os/Theseus/pull/1019#discussion_r1274236825",
+        "created_at": "2023-07-26T00:22:45Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "ee27c46eccb8880127525082f03ea5a4694bb93d"
+      }
+    },
+    {
+      "file": "kernel/pci/src/lib.rs",
+      "start_line": 322,
+      "end_line": 324,
+      "message": "the same thing applies here as my comment from `pci_read_32_addr`",
+      "tp_fp": "tp",
+      "severity": "medium",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "medium",
+      "context_required": "diff-plus-related-files",
+      "tp_fp_justification": "写路径同样非 volatile copy_from_slice 写 MMIO，编译器可合并/优化掉写使其不达设备。作者在 84860ad1ec 一并改 volatile 写。",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "kevinaboos",
+        "url": "https://github.com/theseus-os/Theseus/pull/1019#discussion_r1274237687",
+        "created_at": "2023-07-26T00:24:57Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "ee27c46eccb8880127525082f03ea5a4694bb93d"
+      }
+    }
+  ]
+}

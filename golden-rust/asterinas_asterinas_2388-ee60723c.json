@@ -1,0 +1,36 @@
+{
+  "pr_key": "asterinas_asterinas_2388-ee60723c",
+  "pr": {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 2388,
+    "base": "cded205535e176963dc49bf40f4c8492c2289c6c",
+    "head": "ee60723c2a299b0798d390d28b2a7bb849adf56d"
+  },
+  "findings": [
+    {
+      "file": "kernel/src/fs/path/mod.rs",
+      "start_line": 325,
+      "end_line": 333,
+      "message": "I guess you still miss these checks:\r\n```rust\r\n        let current_ns_proxy = ctx.thread_local.borrow_ns_proxy();\r\n        let current_mnt_ns = current_ns_proxy.unwrap().mnt_ns();\r\n        if !current_mnt_ns.owns(&self.mount) {\r\n            return_errno_with_message!(\r\n                Errno::EINVAL,\r\n                \"the source path is not in this mount namespace\"\r\n            );\r\n        }\r\n        if !current_mnt_ns.owns(&dst_path.mount) {\r\n            return_errno_with_message!(\r\n                Errno::EINVAL,\r\n                \"the destination path is not in this mount namespace\"\r\n            );\r\n        }\r\n```",
+      "tp_fp": "tp",
+      "severity": "medium",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "medium",
+      "context_required": "diff-plus-related-files",
+      "tp_fp_justification": "set_mount_propagation (new in this PR) at exam_head ee60723c performs the is_mount_root check but omits the mount-namespace ownership check (current_mnt_ns.owns(&self.mount)). lrh2000's follow-up ('I guess you still miss these checks') flags the missing ns-ownership guard, referencing the owns() pattern used by move_mount_to. Without it, mount propagation can be changed on a mount not owned by the caller's mount namespace, violating namespace isolation. The final merged version adds the ctx parameter and the owns(&self.mount) check. Defect range L325-333 is the set_mount_propagation body at this head.",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "lrh2000",
+        "url": "https://github.com/asterinas/asterinas/pull/2388#discussion_r2418453521",
+        "created_at": "2025-10-10T04:13:08Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "ee60723c2a299b0798d390d28b2a7bb849adf56d",
+        "original_start_line": 329,
+        "original_end_line": 329,
+        "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
+      }
+    }
+  ]
+}

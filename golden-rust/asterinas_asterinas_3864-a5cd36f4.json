@@ -1,0 +1,33 @@
+{
+  "pr_key": "asterinas_asterinas_3864-a5cd36f4",
+  "pr": {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 3864,
+    "base": "bc0c867186616fba6b467259cb653ac200910a95",
+    "head": "a5cd36f40b9ca32fffe937644e1e9b1a80a6d9a6"
+  },
+  "findings": [
+    {
+      "file": "kernel/core/src/syscall/chmod.rs",
+      "start_line": 96,
+      "end_line": 121,
+      "message": "I think there is a TOCTOU race between `path.metadata()` and `path.set_mode(mode)` here.\r\n\r\n`metadata()` does not return a locked view of the inode. `Metadata` is a `Copy` value, and filesystem implementations build it while holding their internal lock and release the lock before returning. For example, ext2 takes `self.inner.read()` in `metadata()`, copies `uid` and `gid` into `Metadata`, and drops the read guard when the function returns. `set_mode()` later takes a new write lock. Ramfs follows the same pattern with its metadata spinlock. Therefore, the ownership checks and the mode update are two separate critical sections:\r\n\r\n```text\r\nchmod:  read uid/gid ---- authorize -------------------- set mode\r\nchown:                     change uid/gid and mode bits\r\n```\r\n\r\nFor example, suppose an inode initially belongs to user `U` and group `G1`:\r\n\r\n1. `U` calls `chmod()` with `S_ISUID` or `S_ISGID`, and `metadata()` returns the old `uid = U` and `gid = G1`.\r\n2. A concurrent `chown()` or `chgrp()` changes the inode to another owner or group.\r\n3. `chmod()` finishes its checks using the old snapshot and then installs the requested mode on the inode in its new ownership state.\r\n\r\nFor set-ID bits, this result cannot be explained by either valid Linux serial ordering. If `chmod()` happens first, the following `chown()` must clear the applicable set-ID bits. If `chown()` happens first, `chmod()` must check the new owner and group and may either fail or clear `S_ISGID`.\r\n\r\nLinux prevents this interleaving by taking the inode's exclusive `i_rwsem` in [`chmod_common()`](https://github.com/torvalds/linux/blob/v7.1/fs/open.c#L618-L649) before running the security hook and `notify_change()`. The owner check and `S_ISGID` filtering in [`setattr_prepare()`](https://github.com/torvalds/linux/blob/v7.1/fs/attr.c#L161-L216), as well as the filesystem's attribute update, all run while that lock is held. [`chown_common()`](https://github.com/torvalds/linux/blob/v7.1/fs/open.c#L739-L784) uses the same inode lock and decides which set-ID bits to clear inside the same critical section.\r\n\r\nTBH, I'm not entirely sure how to fix this issue either, given that we currently lack a unified inode lock at the VFS layer...",
+      "tp_fp": "tp",
+      "severity": "medium",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "medium",
+      "context_required": "diff-plus-related-files",
+      "tp_fp_justification": "chmod has a TOCTOU race: path.metadata() takes the filesystem's internal lock, copies uid/gid into a Copy Metadata value, and releases the lock before returning. The permission check and S_ISGID/S_ISUID logic then run on this stale snapshot. A concurrent chown/chgrp can change ownership between the check and the subsequent path.set_mode() which acquires a fresh lock. This allows installing set-ID bits on an inode whose ownership has changed, violating Linux's serializable chmod/chown semantics.",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "StevenJiang1110",
+        "url": "https://github.com/asterinas/asterinas/pull/3864#discussion_r4236161483",
+        "created_at": "2026-10-10T03:07:51Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "a5cd36f40b9ca32fffe937644e1e9b1a80a6d9a6"
+      }
+    }
+  ]
+}

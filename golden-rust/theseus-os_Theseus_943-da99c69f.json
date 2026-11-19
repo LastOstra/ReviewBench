@@ -1,0 +1,33 @@
+{
+  "pr_key": "theseus-os_Theseus_943-da99c69f",
+  "pr": {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 943,
+    "base": "5ca803592e1722d0dc748fa7cc4b7c84b9c8b470",
+    "head": "da99c69f85663ca480d1d859ef322e77598f5219"
+  },
+  "findings": [
+    {
+      "file": "kernel/interrupts/src/x86_64/mod.rs",
+      "start_line": 40,
+      "end_line": 40,
+      "message": "this should probably be fully qualified in order to avoid name clashes or prevent calling crates from having to import it specifically.\r\n```suggestion\r\n            if let $crate::EoiBehavior::CallerMustSignalEoi = $code {\r\n```",
+      "tp_fp": "tp",
+      "severity": "medium",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "easy",
+      "context_required": "diff-only",
+      "tp_fp_justification": "#[macro_export] 宏体内 CallerMustSignalEoi 未全限定为 $crate::EoiBehavior::...，macro_rules 卫生性不覆盖 item 路径，调用 crate 未 import 则编译失败、同名项则静默误绑定。作者在 75c2d15311 修复。",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "kevinaboos",
+        "url": "https://github.com/theseus-os/Theseus/pull/943#discussion_r1178253093",
+        "created_at": "2023-04-26T18:32:46Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "da99c69f85663ca480d1d859ef322e77598f5219"
+      }
+    }
+  ]
+}

@@ -1,0 +1,86 @@
+{
+  "pr_key": "theseus-os_Theseus_859-215bc9f9",
+  "pr": {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 859,
+    "base": "7fc1719d8d8ffb161397a08608a9eed0ce1b5443",
+    "head": "215bc9f9e095379a4b2dafe499dc5ef99697c6e6"
+  },
+  "findings": [
+    {
+      "file": "kernel/task/src/lib.rs",
+      "start_line": 414,
+      "end_line": 444,
+      "message": "```rust\r\n        // Note: previously, we waited for this task to actually stop running;\r\n        //       however, I don't think there's any need to actually do that.\r\n```\r\nIs this the reasoning?\r\n\r\nI don't think the fence will synchronise temporally with the fence in `task_wrapper`. We will be woken before `task_cleanup_final` has run but the exit value has already been stored so IDK if we really care.",
+      "tp_fp": "tp",
+      "severity": "medium",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "hard",
+      "context_required": "broader-project-context",
+      "tp_fp_justification": "本 PR 将 join() 从忙等至任务完全停止改为被唤醒后提前返回，join() 的 Acquire fence 不再与晚于唤醒执行的 Release fence 配对，破坏 join() 文档承诺的内存同步契约。作者认可 ('Good point') 并在 internal_exit() 唤醒前补 fence(Ordering::Release)。",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "tsoutsman",
+        "url": "https://github.com/theseus-os/Theseus/pull/859#discussion_r1124288658",
+        "created_at": "2023-03-03T10:41:40Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "215bc9f9e095379a4b2dafe499dc5ef99697c6e6",
+        "original_start_line": 432,
+        "original_end_line": 436,
+        "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
+      }
+    },
+    {
+      "file": "kernel/waker_generic/src/lib.rs",
+      "start_line": 71,
+      "end_line": 73,
+      "message": "Wakers can be reused. If `woken` isn't reset, subsequent calls to `block` will immediately return.",
+      "tp_fp": "tp",
+      "severity": "medium",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "easy",
+      "context_required": "diff-only",
+      "tp_fp_justification": "本 PR 新增 Blocker::block 中 `*woken = false` 重置被注释掉，waker 唤醒一次后 woken 恒 true，后续 block() 不阻塞立即返回。作者认可并在 4bd80bc1da 恢复该语句。",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "tsoutsman",
+        "url": "https://github.com/theseus-os/Theseus/pull/859#discussion_r1124262012",
+        "created_at": "2023-03-03T10:14:23Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "215bc9f9e095379a4b2dafe499dc5ef99697c6e6",
+        "original_start_line": 72,
+        "original_end_line": 72,
+        "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
+      }
+    },
+    {
+      "file": "kernel/waker_generic/src/lib.rs",
+      "start_line": 70,
+      "end_line": 78,
+      "message": "> I think that wouldn't cause potential interleaving issues with the waker, so long as we keep the wake() function as is... but I haven't thought deeply about it.\r\n\r\nI think it would in the following order:\r\n1. Blocker drops the lock and is preempted\r\n2. Waker wakes the blocker (unblocking an already unblocked task)\r\n3. Blocker is rescheduled and blocks itself, but won't ever be unblocked.\r\n\r\nhm, yea. then we probably do need to disable preemption for correctness.",
+      "tp_fp": "tp",
+      "severity": "high",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "hard",
+      "context_required": "diff-plus-related-files",
+      "tp_fp_justification": "本 PR 新增 waker_generic 在持 woken 自旋锁期间执行 block_action()/wake_action() 且未禁抢占：blocker 自阻塞后、释放锁前被抢占，waker 永远自旋等待已被阻塞任务持有的锁，丢失唤醒/死锁。作者确认 'we do need to always disable preemption' 并在 83a6932827 加 hold_preemption_no_timer_disable() 修复。注意锚点 L15 是文件头讨论注释，实际缺陷在 block/wake 临界区，行号需重点核对。",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "tsoutsman",
+        "url": "https://github.com/theseus-os/Theseus/pull/859#discussion_r1125203672",
+        "created_at": "2023-03-04T01:41:00Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "215bc9f9e095379a4b2dafe499dc5ef99697c6e6",
+        "original_start_line": 13,
+        "original_end_line": 15,
+        "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
+      }
+    }
+  ]
+}

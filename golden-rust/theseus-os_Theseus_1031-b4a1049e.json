@@ -1,0 +1,61 @@
+{
+  "pr_key": "theseus-os_Theseus_1031-b4a1049e",
+  "pr": {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 1031,
+    "base": "27429e57120be7b6725101fde4582dfd48b936d0",
+    "head": "b4a1049e46530295ff54780a7f956c3a2791073b"
+  },
+  "findings": [
+    {
+      "file": "kernel/memory_structs/src/lib.rs",
+      "start_line": 389,
+      "end_line": 392,
+      "message": "this isn't correct. We need to _either_:\r\n* add `rhs * P::NUM_4K_PAGES` to the inner `number`\r\n  * Doesn't require `Copy`\r\n* add `rhs` to the outer `Page`, which will call your above `Add` implementation that handles the `NUM_4K_PAGES` multiplier properly.\r\n  * Requires `Copy`\r\n\r\nRight now you're doing both, which means you end up multiplying it twice accidentally, i.e., doing `number += rhs * P::NUM_4K_PAGES * P::NUM_4K_PAGES`\r\n\r\nI assume this is just an accident since you have it right in `SubAssign` below",
+      "tp_fp": "tp",
+      "severity": "medium",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "easy",
+      "context_required": "diff-only",
+      "tp_fp_justification": "Add 内部已乘 P::NUM_4K_PAGES，AddAssign 又对 rhs 先乘一次再调 Add，huge page += 双重乘法。作者 'My bad' 并在 d96ff42821 修复。",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "kevinaboos",
+        "url": "https://github.com/theseus-os/Theseus/pull/1031#discussion_r1317625683",
+        "created_at": "2023-09-06T17:38:41Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "b4a1049e46530295ff54780a7f956c3a2791073b",
+        "original_start_line": 391,
+        "original_end_line": 391,
+        "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
+      }
+    },
+    {
+      "file": "kernel/memory_structs/src/lib.rs",
+      "start_line": 549,
+      "end_line": 552,
+      "message": "to me, this function should return the size in terms of the number `P`-sized pages, not size in the number of 4k pages.  For example, a range of two 2MiB huge pages should return `2` here, not `2*512`. This is consistent with how we expect iteration to work too.\r\n\r\nThat means you also need to change `size_in_bytes` to reflect this (use `P`)",
+      "tp_fp": "tp",
+      "severity": "medium",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "medium",
+      "context_required": "diff-only",
+      "tp_fp_justification": "size_in_pages 已按 P 折算大页个数，但 size_in_bytes 仍乘 4K PAGE_SIZE，huge page 范围字节数被低估 512/262144 倍。作者 'I had forgotten to account for this in size_in_bytes' 并在 d96ff42821 修复。锚点在缺陷上方，行号需重点核对。",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "kevinaboos",
+        "url": "https://github.com/theseus-os/Theseus/pull/1031#discussion_r1317691334",
+        "created_at": "2023-09-06T18:47:39Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "b4a1049e46530295ff54780a7f956c3a2791073b",
+        "original_start_line": 546,
+        "original_end_line": 546,
+        "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
+      }
+    }
+  ]
+}

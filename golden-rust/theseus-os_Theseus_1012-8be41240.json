@@ -1,0 +1,61 @@
+{
+  "pr_key": "theseus-os_Theseus_1012-8be41240",
+  "pr": {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 1012,
+    "base": "c741ecc4d31c6adc81f3b31188b0ee238118b632",
+    "head": "8be41240b5a3aa882f261ec6215349e340b8be0a"
+  },
+  "findings": [
+    {
+      "file": "kernel/preemption/src/lib.rs",
+      "start_line": 48,
+      "end_line": 50,
+      "message": "hmm, that's true in the simple case, but that only holds if we do not ever mess with preemption in an interrupt handler.\r\n\r\nThe increment and subsequent load are still not atomic, unlike the prior approach that used actual atomics (`fetch_add`). It's possible for an interupt to occur after the `increment` but before the `load`, and if that interrupt handler obtains or drops a `PreemptionGuard` and then returns, then the `prev_val` will be incorrect.\r\n\r\nI assume there is no such single instruction that can increment a register _and_ return its prior value.... so without that, we have to disable interrupts around this sequence of two operations, right?",
+      "tp_fp": "tp",
+      "severity": "high",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "medium",
+      "context_required": "diff-plus-related-files",
+      "tp_fp_justification": "用非原子 increment()+load()-1 取代原子 fetch_add，中断处理程序可在两步间修改同一 CPU 本地计数，prev_val 丢失更新。作者改用返回旧值的 xadd/fetch_add 修复。",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "kevinaboos",
+        "url": "https://github.com/theseus-os/Theseus/pull/1012#discussion_r1275643216",
+        "created_at": "2023-07-27T01:47:34Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "8be41240b5a3aa882f261ec6215349e340b8be0a",
+        "original_start_line": 49,
+        "original_end_line": 50,
+        "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
+      }
+    },
+    {
+      "file": "kernel/preemption/src/lib.rs",
+      "start_line": 128,
+      "end_line": 129,
+      "message": "same question as above",
+      "tp_fp": "tp",
+      "severity": "high",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "medium",
+      "context_required": "diff-plus-related-files",
+      "tp_fp_justification": "Drop 中同样把原子 fetch_sub 拆成 load()+decrement() 两步，中断可在其间修改计数致 prev_val 错误。作者一并改用原子 fetch_sub 修复。",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "kevinaboos",
+        "url": "https://github.com/theseus-os/Theseus/pull/1012#discussion_r1275643340",
+        "created_at": "2023-07-27T01:47:44Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "8be41240b5a3aa882f261ec6215349e340b8be0a",
+        "original_start_line": 127,
+        "original_end_line": 129,
+        "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
+      }
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "pr_key": "redox-os_termion_29-cc9c32b9",
+  "pr": {
+    "repo": "https://github.com/redox-os/termion",
+    "pr_number": 29,
+    "base": "12c0ad04dbf6fc30081c2e23b2edfa409c340717",
+    "head": "cc9c32b981363771c7a6e011aa103255277d157b"
+  },
+  "findings": [
+    {
+      "file": "src/raw.rs",
+      "start_line": 107,
+      "end_line": 113,
+      "message": "This isn't supported yet on Redox.\n",
+      "tp_fp": "tp",
+      "severity": "low",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "easy",
+      "context_required": "broader-project-context",
+      "tp_fp_justification": "Redox 平台 into_raw_mode 无条件写入 ENTER_MOUSE_SEQUENCE，Redox 终端当时不支持鼠标转义序列。作者在 206c61de9e 将鼠标改为可选 MouseTerminal 且 cfg(not(target_os=redox)) 排除。注意：outdated 评论无行号锚点，需 contents API 核实 exam_head 文件中缺陷位置，无法核实则剔除。 行号已核实：缺陷位于 exam_head 文件 L107-113（ENTER_MOUSE_SEQUENCE 写入在 L111），锚点取 111。",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "ticki",
+        "url": "https://github.com/redox-os/termion/pull/29#discussion_r71416874",
+        "created_at": "2016-07-19T20:28:46Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "cc9c32b981363771c7a6e011aa103255277d157b",
+        "alignment_reasoning": "Outdated review comment without a line anchor; defect range verified against the exam_head file contents."
+      }
+    }
+  ]
+}

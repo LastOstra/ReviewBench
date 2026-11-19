@@ -1,0 +1,61 @@
+{
+  "pr_key": "theseus-os_Theseus_1027-e71c4173",
+  "pr": {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 1027,
+    "base": "4c14a71796b0a2e840627a239fb3ea5a9e971a2b",
+    "head": "e71c417387fb62d3446e4d75bb2fec541eed6752"
+  },
+  "findings": [
+    {
+      "file": "kernel/multicore_bringup/src/aarch64.rs",
+      "start_line": 61,
+      "end_line": 62,
+      "message": "This mapping obviously needs to be writable initially for us to copy stuff to it. But does it need to be writable after that initial copy, or can we remap it as just R+X? \r\n\r\nGenerally we want to map pages using the _minimum_ required permissions, and if those pages just contain executable text content, then we definitely don't want to map them as writable.",
+      "tp_fp": "tp",
+      "severity": "medium",
+      "category": "reliability",
+      "scope": "introduced-by-pr",
+      "difficulty": "easy",
+      "context_required": "diff-only",
+      "tp_fp_justification": "AP 启动代码 identity mapping 拷贝机器码后仍保持 RWX，违反 W^X 最小权限，内核文本页可被任意写入。作者 'yes will do' 并在 9ad8fb839f 改为拷贝后 remap R+X。",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "kevinaboos",
+        "url": "https://github.com/theseus-os/Theseus/pull/1027#discussion_r1284821884",
+        "created_at": "2023-08-04T20:26:28Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "e71c417387fb62d3446e4d75bb2fec541eed6752",
+        "original_start_line": 61,
+        "original_end_line": 61,
+        "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
+      }
+    },
+    {
+      "file": "kernel/multicore_bringup/src/aarch64.rs",
+      "start_line": 67,
+      "end_line": 68,
+      "message": "hmm, i think i was able to do this safely on the x86 side, but I'm not 100% sure what differs here in the aarch64 world. Is it possible to map this address and then access it safely via the `MappedPages::as_slice()` API instead of just unsafely trusting that we can dereference it?",
+      "tp_fp": "tp",
+      "severity": "medium",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "medium",
+      "context_required": "diff-plus-related-files",
+      "tp_fp_justification": "unsafe 从函数指针构造整页 [u8; PAGE_SIZE] 引用，假定函数体占满整页且可读，无边界/映射保证，unsound；原代码在 if false 死分支，本 PR 移入实际执行路径。作者改用 mod_mgmt 安全 API (35edabaaf0)。",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "kevinaboos",
+        "url": "https://github.com/theseus-os/Theseus/pull/1027#discussion_r1284819268",
+        "created_at": "2023-08-04T20:22:44Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "e71c417387fb62d3446e4d75bb2fec541eed6752",
+        "original_start_line": 68,
+        "original_end_line": 68,
+        "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
+      }
+    }
+  ]
+}

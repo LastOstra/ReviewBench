@@ -1,0 +1,36 @@
+{
+  "pr_key": "asterinas_asterinas_3328-1aec7970",
+  "pr": {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 3328,
+    "base": "7f3a096428b9607793c312e065c8c778b73c9748",
+    "head": "1aec7970aa7e8d01a1adbe9d0671e41fd0d619d2"
+  },
+  "findings": [
+    {
+      "file": "kernel/src/fs/vfs/fs_apis/registry.rs",
+      "start_line": 292,
+      "end_line": 297,
+      "message": "The current approach of releasing the lock before invoking `create_fn` may introduce correctness issues. Specifically, it can lead to multiple instances of `create_fn` executing concurrently, which may be problematic for certain filesystems. For example, in the case of virtio-fs, this could result in multiple `FUSE_INIT` requests being sent simultaneously. Therefore, we should ensure that at most one instance of `create_fn` is executing at any given time.\n\nThe simplest fix is to hold the lock on `entries` while calling `create_fn`. Alternatively, if you prefer to release the lock before invoking it, we would need to track whether a `create_fn` is currently in progress to prevent concurrent executions.",
+      "tp_fp": "tp",
+      "severity": "high",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "medium",
+      "context_required": "diff-plus-related-files",
+      "tp_fp_justification": "FsCache::get_or_create releases the entries lock before invoking create_fn. Concurrent callers can both observe a missing entry and both proceed to execute create_fn, leading to multiple concurrent FUSE_INIT requests for virtio-fs or other filesystems with non-idempotent initialization. The lock must be held during create_fn execution.",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "StevenJiang1110",
+        "url": "https://github.com/asterinas/asterinas/pull/3328#discussion_r3569413620",
+        "created_at": "2026-07-13T09:16:22Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "1aec7970aa7e8d01a1adbe9d0671e41fd0d619d2",
+        "original_start_line": 295,
+        "original_end_line": 295,
+        "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
+      }
+    }
+  ]
+}

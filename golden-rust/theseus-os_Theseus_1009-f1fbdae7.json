@@ -1,0 +1,36 @@
+{
+  "pr_key": "theseus-os_Theseus_1009-f1fbdae7",
+  "pr": {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 1009,
+    "base": "403d3e280e0d7e20854922fe771a5776a9d9a4b5",
+    "head": "f1fbdae741ffa4bb34192d31d8e7bd9f37ca871d"
+  },
+  "findings": [
+    {
+      "file": "kernel/http_client/src/lib.rs",
+      "start_line": 158,
+      "end_line": 169,
+      "message": "is there a reason why we choose to panic in this particular case rather than return an error? IOW, is this is an unexpected error here that should never happen?",
+      "tp_fp": "tp",
+      "severity": "medium",
+      "category": "reliability",
+      "scope": "introduced-by-pr",
+      "difficulty": "medium",
+      "context_required": "diff-plus-related-files",
+      "tp_fp_justification": "socket 移入共享 Mutex 后先锁内读 can_send 再 drop 重新 lock 发送，窗口内并发 poll/远端关闭可使发送失败，.expect 在可触发路径 panic。作者承认残留并 'Will fix'，4932a2e44b 改为返回错误。",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "kevinaboos",
+        "url": "https://github.com/theseus-os/Theseus/pull/1009#discussion_r1264036942",
+        "created_at": "2023-07-14T18:41:37Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "f1fbdae741ffa4bb34192d31d8e7bd9f37ca871d",
+        "original_start_line": 169,
+        "original_end_line": 169,
+        "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
+      }
+    }
+  ]
+}

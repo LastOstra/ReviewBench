@@ -1,0 +1,36 @@
+{
+  "pr_key": "theseus-os_Theseus_917-7999e496",
+  "pr": {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 917,
+    "base": "2e8c8a6922a5d75e5f27eca24481ad2511184082",
+    "head": "7999e496c3c8c39a7ce94929de4f1670109cf12d"
+  },
+  "findings": [
+    {
+      "file": "kernel/cpu_local/src/lib.rs",
+      "start_line": 199,
+      "end_line": 201,
+      "message": "Converting the address to a `&mut P` (in `with_mut`) even if we don't use `per_cpu_data_mut` is undefined behaviour as the memory is uninitialised.",
+      "tp_fp": "tp",
+      "severity": "high",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "medium",
+      "context_required": "diff-only",
+      "tp_fp_justification": "初始化路径 per-CPU 镜像未写入数据时 with_mut 将裸地址转 &mut P，对未初始化内存创建可变引用即 UB。作者 'You're right'，改用 core::ptr::write。",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "tsoutsman",
+        "url": "https://github.com/theseus-os/Theseus/pull/917#discussion_r1155876046",
+        "created_at": "2023-04-03T12:10:53Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "7999e496c3c8c39a7ce94929de4f1670109cf12d",
+        "original_start_line": 201,
+        "original_end_line": 201,
+        "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
+      }
+    }
+  ]
+}

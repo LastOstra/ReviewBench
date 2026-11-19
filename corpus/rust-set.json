@@ -248,5 +248,325 @@
     "title": "Add safety requirements for Pattern and Searcher",
     "body": "<!-- homu-ignore:start -->\r\n*[View all comments](https://triagebot.infra.rust-lang.org/gh-comments/rust-lang/rust/pull/165681)*\r\n<!-- homu-ignore:end -->\r\n\r\n<!-- homu-ignore:start -->\r\n<!--\r\nPlease read our [LLM policy] before opening a PR,\r\nIf you used an LLM to generate any part of this PR, including the PR description, please disclose that according to our [guidelines][disclosure guidelines].\r\nLLM contributions are not banned, but are held to a higher standard of review and correctness.\r\n\r\n[LLM policy]: https://forge.rust-lang.org/policies/llm-usage.html\r\n[disclosure guidelines]: https://rustc-dev-guide.rust-lang.org/llm-guidance/writing.html#disclosure-guidelines\r\n\r\nIf this PR is related to an unstable feature or an otherwise tracked effort,\r\nplease link to the relevant tracking issue here. If you don't know of a related\r\ntracking issue or there are none, feel free to ignore this.\r\n\r\nThis PR will get automatically assigned to a reviewer. In case you would like\r\na specific user to review your work, you can assign it to them by using\r\n\r\n    r? <reviewer name>\r\n\r\nWhen merged, your PR's description becomes part of the commit message of a merge commit.\r\nIf you do not want certain parts of it (such as your LLM disclosure) to show up in the permanent git history,\r\nsurround them with a pair of HTML comments containing `homu-ignore:start` and `homu-ignore:end`.\r\n-->\r\n<!-- homu-ignore:end -->\r\n\r\nThis PR tries to fix the issue rust-lang/rust#164904 and rust-lang/rust#165076. When I was reviewing the missing safety doc of unsafe trait in std, I found that `ReverseSearcher ` and `Searcher` are not marker trait. They provide safe methods but they are unsafe trait without safety requirements. Then I found these two issues so I tried to fix these.\r\n\r\nI open a topic in Zulipchat: [Soundness issue about Pattern and Search](https://rust-lang.zulipchat.com/#narrow/channel/219381-t-libs/topic/Soundness.20issue.20about.20Pattern.20and.20Search/with/638725746).\r\n\r\nAccording to the topic, what I do in this PR are:\r\n\r\n1. Adding safety requirements for `Search` and `ReverseSearcher`. Concretely, I imitate the write style of Rust-for-linux(I did many research about the safety doc of Rust-for-linux) by using `Guarantees` to describe that the requirements implementors should follow. It seems that there are duplication(`next_match`, `next_reject`, `next_match_back`, `next_reject_back` share the same guarantees), so it can be improved.\r\n2. Marking `Pattern` as unsafe, and adding safety requirements for `Pattern`. In particularly, I think `Pattern` need to ensure that `[into_searcher](https://doc.rust-lang.org/nightly/core/str/pattern/trait.Pattern.html#tymethod.into_searcher)` does return the searcher that search pattern for the given string.",
     "nwo": "rust-lang/rust"
+  },
+  {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 2186,
+    "pr_url": "https://github.com/asterinas/asterinas/pull/2186",
+    "base": "ab5e1999fc4578d1b0880f8920298869cea66342",
+    "head": "eed1226316a16c122a7d958482abd358645bb0b2",
+    "title": "Add basic configfs implementation",
+    "body": "This PR is based on #2121 and is required by #1844 .",
+    "nwo": "asterinas/asterinas"
+  },
+  {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 2388,
+    "pr_url": "https://github.com/asterinas/asterinas/pull/2388",
+    "base": "ef099996fcc5d29bc8af90ca92793b315936bbc3",
+    "head": "2b02a7f7034de24778e19eaa66159ee77af32c82",
+    "title": "Support `MS_PRIVATE` flag for `mount`",
+    "body": "`MS_PRIVATE` flag is required by Podman (#2214).\r\n\r\nThis PR introduces the basic framework for mount propagation type and enables the `MS_PRIVATE` flag. Since the default behavior of mount is `MS_PRIVATE`, the existing logic for mount operations does not require modifications.",
+    "nwo": "asterinas/asterinas"
+  },
+  {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 2388,
+    "pr_url": "https://github.com/asterinas/asterinas/pull/2388",
+    "base": "cded205535e176963dc49bf40f4c8492c2289c6c",
+    "head": "ee60723c2a299b0798d390d28b2a7bb849adf56d",
+    "title": "Support `MS_PRIVATE` flag for `mount`",
+    "body": "`MS_PRIVATE` flag is required by Podman (#2214).\r\n\r\nThis PR introduces the basic framework for mount propagation type and enables the `MS_PRIVATE` flag. Since the default behavior of mount is `MS_PRIVATE`, the existing logic for mount operations does not require modifications.",
+    "nwo": "asterinas/asterinas"
+  },
+  {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 2592,
+    "pr_url": "https://github.com/asterinas/asterinas/pull/2592",
+    "base": "314fbe285a656cea82344b4c121cb061a6d41224",
+    "head": "c390ea92ffcf11b143a926ff8756e7e55b50a0c5",
+    "title": "Support some cgroup attributes required by Podman",
+    "body": "Based on #2282 .\r\n\r\nThis PR supports some attributes of cgroup pids controller and cpuset controller, allowing reading/writing behavior for them (these attributes actually have no effect). In addition, This PR supports cgroup.freeze attribute, which can stop or resume the processes in the corresponding cgroup.",
+    "nwo": "asterinas/asterinas"
+  },
+  {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 2611,
+    "pr_url": "https://github.com/asterinas/asterinas/pull/2611",
+    "base": "a616682fe3974e0b1ca04a8e009e31570593e1eb",
+    "head": "db4e9441fb5d019e22100548ae1a1de462565038",
+    "title": "Fix the behavior of syncing `BlockGroup` metadata in ext2",
+    "body": "During debugging NixOS in Asterinas, when creating a file in the ext2 filesystem and then shutting down the system, the file cannot be read correctly upon reboot. The root cause is an issue with the sync operation of ext2's `BlockGroup`. The current implementation directly writes the `IdAlloc` as bytes, but the length of the slice after `as_bytes` does not meet the alignment requirement with `SECTOR_SIZE` specified in `write_bytes_async`, preventing the write operation from proceeding. \r\n\r\nThis PR fixes the problem by ensuring the size of `IdAlloc` is aligned with `SECTOR_SIZE` when loading.",
+    "nwo": "asterinas/asterinas"
+  },
+  {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 3328,
+    "pr_url": "https://github.com/asterinas/asterinas/pull/3328",
+    "base": "7f3a096428b9607793c312e065c8c778b73c9748",
+    "head": "1aec7970aa7e8d01a1adbe9d0671e41fd0d619d2",
+    "title": "Introduce a cache mechanism for `FsType`",
+    "body": "Currently, every time we mount a device, we create a new file system instance. However, having multiple file system instances for the same device means each instance has its own independent locks, and these instances could concurrently modify the contents of the device.\r\n\r\nThis PR addresses the above situation. With this PR, when the same device is mounted multiple times in different locations, these mount instances can actually share the same file system instance, which is aligned with Linux.",
+    "nwo": "asterinas/asterinas"
+  },
+  {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 3864,
+    "pr_url": "https://github.com/asterinas/asterinas/pull/3864",
+    "base": "bc0c867186616fba6b467259cb653ac200910a95",
+    "head": "a5cd36f40b9ca32fffe937644e1e9b1a80a6d9a6",
+    "title": "Fix `chmod` permission and setgid handling",
+    "body": "Align `chmod` permission and `S_ISGID` handling with Linux, and enable the corresponding LTP coverage. Exclude unsupported `chmod/fchmod` cases on exFAT, which lacks per-inode POSIX ownership and mode support.",
+    "nwo": "asterinas/asterinas"
+  },
+  {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 4003,
+    "pr_url": "https://github.com/asterinas/asterinas/pull/4003",
+    "base": "4012f3770348991918845ba021a7d5bbbf5f1f12",
+    "head": "81eaaca313dd128905a2b0d3a1e9a607a24c2d5e",
+    "title": "syscall: chown: enforce CAP_CHOWN and clear the set-ID bits",
+    "body": "### The problem\n\n`chown(2)` and its family accept anything from anyone.  `sys_fchown()` and\n`sys_fchownat()` forward the request to `Path::set_owner()`/`set_group()`\ndirectly, with no permission check, and nothing clears the set-user-ID or\nset-group-ID bits of the file afterwards.\n\nBoth are absent on Linux:\n\n* an unprivileged user can hand any file it owns to an arbitrary uid.\n  Measured on the same seed image as uid 1000:\n  `chown(\"d1/a_rw\", 1001, 1001)` returns `EPERM` on Linux and `0` here;\n* because the set-ID bits survive the chown, a user can `chmod u+s` its own\n  binary and give it to root, leaving behind a root-owned set-user-ID binary.\n\n### The fix\n\nNew `do_chown()`, mirroring Linux's `chown_ok()`/`chgrp_ok()`,\n`setattr_should_drop_sgid()` and `setattr_prepare()`:\n\n* changing the owner requires `CAP_CHOWN`; the only exception is a no-op by\n  the file's owner;\n* changing the group requires `CAP_CHOWN` too, except that the owner of the\n  file may keep the group or move it to one of its groups;\n* a successful chown of a non-directory clears `S_ISUID`, and clears\n  `S_ISGID` too unless the file is not group-executable and the caller is in\n  the file's group or has `CAP_FSETID` (directories keep both bits, where\n  `S_ISGID` only controls the group of newly created children);\n* the stripping is a mode change, so it also requires the owner or\n  `CAP_FOWNER`, and it happens even for a `chown(-1, -1)` call;\n* the whole request is checked *before* anything is written, so a rejected\n  call leaves the file untouched;\n* `on_attr_change()` is notified, as `chmod` does since #3864.\n\nThe capability plumbing follows the existing `ctx`-based call sites\n(`lsm_hooks::on_capable` + `CapableContext::new`, as in\n`capable_modify_file_cap()`); `CapSet::CHOWN`, `CapSet::FSETID` and\n`CapSet::FOWNER` already exist.\n\n### Notes\n\n* The stripping deliberately does not reuse `xattr.rs::clear_set_id_bits()`:\n  that helper implements the content-change rule\n  (`setattr_should_drop_suidgid()`, where `CAP_FSETID` preserves both bits),\n  which is not what `chown` follows.\n* Removing the `security.capability` xattr on chown (`ATTR_KILL_PRIV`) is not\n  implemented, so `ChownTest.ChownRemovesSecurityCapability` stays\n  blocklisted.\n* Like the existing `chmod` path, the owner, group and mode updates are\n  separate inode operations, so unlike Linux's single `notify_change()` they\n  are not serialized against concurrent updates.  The permission checks\n  themselves are complete before the first write.\n\n### Testing\n\n* The rules were checked against a real Linux 7.2-rc5 kernel in a QEMU VM,\n  including root and unprivileged callers, no-op and real changes, non-owner\n  callers, `CAP_CHOWN` without `CAP_FOWNER`, `chown(-1, -1)`, and\n  group-executable / non-group-executable setgid files.  The implementation\n  reproduces the kernel's results in all cases.\n* The second commit un-blocks the six\n  `ChownKinds/ChownParamTest.ChownFilePermissionDenied` cases in the gVisor\n  conformance suite, which expect exactly the `EPERM` that this commit adds.\n* The patch is formatted with the pinned `rustfmt` (nightly-2026-07-21).\n  CI runs the full build and conformance suites.\n",
+    "nwo": "asterinas/asterinas"
+  },
+  {
+    "repo": "https://github.com/redox-os/liner",
+    "pr_number": 3,
+    "pr_url": "https://github.com/redox-os/liner/pull/3",
+    "base": "84501ef90b8e47f304be096380eeb86031bdd186",
+    "head": "cb866c44ceb526649bbcbf7974148e374c6c7ca6",
+    "title": "Add closure to read_line()'s arguments to enable syntax highlighting",
+    "body": "Reviews would be great!",
+    "nwo": "redox-os/liner"
+  },
+  {
+    "repo": "https://github.com/redox-os/sodium",
+    "pr_number": 61,
+    "pr_url": "https://github.com/redox-os/sodium/pull/61",
+    "base": "ade5e35fc1455dc8ff7c5dbbea848defc345f808",
+    "head": "5a32b4d05deffa3326504b95b67e070bdae08cb1",
+    "title": "Add initial command line arguments.",
+    "body": "Add support for --version, --help/-h and -R.\n-R is without function as of now.\n",
+    "nwo": "redox-os/sodium"
+  },
+  {
+    "repo": "https://github.com/redox-os/termion",
+    "pr_number": 1,
+    "pr_url": "https://github.com/redox-os/termion/pull/1",
+    "base": "22ef24096750e182698b7cbfd7655713037842bd",
+    "head": "78182d9b70a9382cb93c9fe561242547438bc58b",
+    "title": "Move to stable",
+    "body": "- Replace unstable `chars()` by `bytes()` and a binary match. `Read::chars()` is unstable and its semantics unclear: https://github.com/rust-lang/rust/issues/27802\n- Use libc from crates.io, as recommended. I'm not sure about building with Redox here, maybe the dependency has to be expressed in another form.\n",
+    "nwo": "redox-os/termion"
+  },
+  {
+    "repo": "https://github.com/redox-os/termion",
+    "pr_number": 29,
+    "pr_url": "https://github.com/redox-os/termion/pull/29",
+    "base": "12c0ad04dbf6fc30081c2e23b2edfa409c340717",
+    "head": "cc9c32b981363771c7a6e011aa103255277d157b",
+    "title": "Implemented mouse input",
+    "body": "After some tinkering i managed to make that missing feature work.\n\nThe event system has been reworked to allow the detection of mouse\nevents as well as key presses.\nXterm, rxvt and X10 emulated escape codes are supported, they are\nenabled and disabled by sending the right escape codes when creating a\n`RawTerminal`.\n\nTo allow for byte manipulation, which was necessary to implement those\nfeatures, the backend iterator has been changed from `chars()` to `bytes()`\n(with specific treatment of unicode sequences), making the whole crate\nnot require nightly rustc.\n\nI moved the event parsing into its own module/file as well.\n\nThis still needs to be extensively tested, but it works empirically in as many terminals as i could get my hands on.\n",
+    "nwo": "redox-os/termion"
+  },
+  {
+    "repo": "https://github.com/redox-os/tfs",
+    "pr_number": 59,
+    "pr_url": "https://github.com/redox-os/tfs/pull/59",
+    "base": "e30ddc042e1e094ac477861a3549abd76e2eb24b",
+    "head": "8ffdee2eb2d80dc2c4ac07d721f9e24508c575a7",
+    "title": "Speck: added trait derivation for `Key`.",
+    "body": "",
+    "nwo": "redox-os/tfs"
+  },
+  {
+    "repo": "https://github.com/redox-os/users",
+    "pr_number": 5,
+    "pr_url": "https://github.com/redox-os/users/pull/5",
+    "base": "50f4022e6c713a131bbbfde360cb0f369e96c672",
+    "head": "65d0b53b3e62afe0a2e6c189e56235c4fd78d296",
+    "title": "Added add_user, add_group, get_gid; fixed empty user list issue",
+    "body": "One issue is the error handling for the file IO with `add_user` and `add_group`. Not really sure what the \"right\" way to do that is, and `unwrap` works just fine for now.",
+    "nwo": "redox-os/users"
+  },
+  {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 813,
+    "pr_url": "https://github.com/theseus-os/Theseus/pull/813",
+    "base": "2e8c8a6922a5d75e5f27eca24481ad2511184082",
+    "head": "26b8912ad7653e05291891223f7ae279823850b0",
+    "title": "Rework sync primitives",
+    "body": "`WaitQueue` now uses `mpmc_queue::Queue` internally.\r\n\r\nAll sync primitives now have a generic that implements `sync::Flavour`, one of:\r\n- `Spin`\r\n- `DisablePreemption`\r\n- `DisableIrq`\r\n- `Block`\r\n\r\nWhich modifies how the primitive behaves.\r\n\r\n`DeadlockPrevention` is a more limited trait implemented for:\r\n- `Spin`\r\n- `DisablePreemption`\r\n- `DisableIrq`\r\n\r\nWhich can be used for wait queues.\r\n\r\nAfter documentation, the PR will be ready for review.\r\n\r\nFuture PRs:\r\n- Implement generic `RwLock`\r\n- Implement Condvar (should be easy since it can work for any mutex)\r\n- Switch to using the new interface",
+    "nwo": "theseus-os/Theseus"
+  },
+  {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 859,
+    "pr_url": "https://github.com/theseus-os/Theseus/pull/859",
+    "base": "7fc1719d8d8ffb161397a08608a9eed0ce1b5443",
+    "head": "215bc9f9e095379a4b2dafe499dc5ef99697c6e6",
+    "title": "Add a generic waker/blocker pair that doesn't depend on `task`.",
+    "body": "* Use it for `JoinableTaskStruct::join()` to make `join()` a blocking call that puts the waiting task to sleep.\r\n\r\nThis is a funky alternative to #774, except that it doesn't include the changes to `dreadnought`. \r\n\r\nWe can implement a regular waker that uses the `waker_generic`, such that it's more ergonomic for all other \"normal\" users of `waker` to invoke one.",
+    "nwo": "theseus-os/Theseus"
+  },
+  {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 890,
+    "pr_url": "https://github.com/theseus-os/Theseus/pull/890",
+    "base": "3ad24f66cc6068f50ce068a869f53147fc043a9d",
+    "head": "d3a057a55b3dac763b8aa58450e51d2e88e70d13",
+    "title": "Multicore step 1 - Implement `handle_ap_cores` for aarch64",
+    "body": "This PR implements the discovery and setup of secondary/AP cores for aarch64.\r\n\r\nThis depends on #889.",
+    "nwo": "theseus-os/Theseus"
+  },
+  {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 917,
+    "pr_url": "https://github.com/theseus-os/Theseus/pull/917",
+    "base": "2e8c8a6922a5d75e5f27eca24481ad2511184082",
+    "head": "7999e496c3c8c39a7ce94929de4f1670109cf12d",
+    "title": "Implement basic per-CPU / CPU-local storage",
+    "body": "* Not yet used anywhere\r\n* Only supported on x86_64\r\n\r\nReminder: remove temp tests and log statements before merging",
+    "nwo": "theseus-os/Theseus"
+  },
+  {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 917,
+    "pr_url": "https://github.com/theseus-os/Theseus/pull/917",
+    "base": "d2ed7ac1e9c6364dbc3961aa36efee945adbd884",
+    "head": "e0310316bd3ab0a3c32c6404507cc65685e8a8a6",
+    "title": "Implement basic per-CPU / CPU-local storage",
+    "body": "* Not yet used anywhere\r\n* Only supported on x86_64\r\n\r\nReminder: remove temp tests and log statements before merging",
+    "nwo": "theseus-os/Theseus"
+  },
+  {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 943,
+    "pr_url": "https://github.com/theseus-os/Theseus/pull/943",
+    "base": "5ca803592e1722d0dc748fa7cc4b7c84b9c8b470",
+    "head": "da99c69f85663ca480d1d859ef322e77598f5219",
+    "title": "Macro-based cross platform interrupt handling",
+    "body": "- This creates a way for interrupt handler to be declared in a cross-platform way:\r\n\r\n```rust\r\n// Cross platform scheduling code\r\ninterrupt_handler!(timer_tick_handler, None, _stack_frame, {\r\n    // ...\r\n});\r\n```\r\n\r\n- Handlers in `scheduler` & `serial_ports` were modified to adopt this.\r\n- Handlers in `exceptions_early`, `exceptions_full`, `keyboard`, `mouse` & `pit_clock` were left untouched as they are x86-specific.\r\n- Handlers in `ata` & `e1000` were not modified because there's no way to test them on aarch64 atm.\r\n\r\nThere's a debate to have: Is it preferable to use macros (as this PR implements) or to declare handlers as a normal function/callback.\r\n\r\nThe macro-based approach has the benefit of allowing x86 handlers to be optimized using the \"x86-interrupt\" special ABI. \r\n\r\nAlso, this removes the need to convert the existing x86_64 part of `interrupts`, because there's no need to declare raw interrupt handlers for every possible interrupt number, as would be the case with normal callbacks (or maybe there's another solution that I don't see?).\r\n\r\nOn the other hand, having all handlers declared as normal callbacks would make the code a bit easier to read and understand.\r\n\r\nThis is mergeable but I'm open to discussion :ok_hand:",
+    "nwo": "theseus-os/Theseus"
+  },
+  {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 957,
+    "pr_url": "https://github.com/theseus-os/Theseus/pull/957",
+    "base": "40805a7934710f16f90000f65497d3a61bb7b681",
+    "head": "a86b3eafeb786abd278062c40196cdc7f40a86e8",
+    "title": "Move convenience mapping functions from `nic_initialization` to `memory`",
+    "body": "This replaces the following items from `nic_initialization`:\r\n- `allocate_memory`\r\n- `allocate_device_register_memory` (which was unused)\r\n- `NIC_MAPPING_FLAGS`\r\n\r\nWith:\r\n- `memory::MMIO_FLAGS`: Mapping flags that can be used to map MMIO registers.\r\n- `memory::map_frame_range`: A convenience function that creates a new memory mapping by allocating specific frames from physical memory.\r\n- `memory::map_mmio_range`: A convenience function that creates a new memory mapping by allocating specific frames from physical memory with [`MMIO_FLAGS`] as flags.\r\n- `pci::pci_map_bar_mem` as a clean replacement for `allocate_device_register_memory`, even though it's also unused. Maps device memory specified by a Base Address Register.\r\n\r\n`gic` & `serial_port_basic` were also modified so that they use `memory::map_mmio_range`.",
+    "nwo": "theseus-os/Theseus"
+  },
+  {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 958,
+    "pr_url": "https://github.com/theseus-os/Theseus/pull/958",
+    "base": "40805a7934710f16f90000f65497d3a61bb7b681",
+    "head": "fcb9b8a69ddfacf4c1ea71147bc7e6916d159577",
+    "title": "`pci` improvements",
+    "body": "This reduces the number of exposed `pci` internals:\r\n- All internal consts are now private.\r\n- `pci_read_*` internal methods are now private as well.\r\n- MSI-X mapping and configuration is now done via `PciDevice::pci_mem_map_msix`. Related structs (`MsixVectorEntry` & `MsixVectorTable`) were moved to `pci`, and there is now a `configure` method in `MsixVectorEntry`.\r\n- The `PciDevice::pci_get_interrupt_line` getter was added.\r\n- `nic_queues::{RxQueue, TxQueue}` now use `OptionalCpuId` instead of `Option<u8>`.\r\n\r\nThis depends on :\r\n- commits from #957\r\n- items added in #948 (`interrupts::InterruptNumber`)\r\n\r\nConsequently, CI will fail at least until `interrupts::InterruptNumber` exists.\r\nQuick fix for testing: Add\r\n```rust\r\npub use core::primitive::u8 as InterruptNumber;\r\n```\r\nto `interrupts::x86_64`.",
+    "nwo": "theseus-os/Theseus"
+  },
+  {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 985,
+    "pr_url": "https://github.com/theseus-os/Theseus/pull/985",
+    "base": "490407b2be935197483f3c43433d72eff0273a4c",
+    "head": "d275d754fb0685777d20ed110b2b4d8f20fdb40e",
+    "title": "Add priority inheritance for blocking mutex",
+    "body": "Depends on #981 #982 #983.\r\n\r\nThe code duplication across `runqueue_epoch` and `runqueue_priority` is temporary before we refactor schedulers and runqueues to not use `cfg` blocks.",
+    "nwo": "theseus-os/Theseus"
+  },
+  {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 1009,
+    "pr_url": "https://github.com/theseus-os/Theseus/pull/1009",
+    "base": "403d3e280e0d7e20854922fe771a5776a9d9a4b5",
+    "head": "f1fbdae741ffa4bb34192d31d8e7bd9f37ca871d",
+    "title": "Port `upd` to new `net` API",
+    "body": "Ports `upd` (and by extension `ota_update_client` and `http_client`) to the new `net` API.\r\n\r\nA couple of points:\r\n- Currently `net::get_ephemeral_port` doesn't keep track of used ports, but that's no better than it was before. I'll leave that for a future PR when I have a better idea of what information we need to track about ports.\r\n- The `LockedSocket::connect` method is a temporary fix until we introduce our own socket types. After this PR I'll have a look at the API `net` needs to expose to `std` and rework our socket abstractions to better reflect this.\r\n- I changed the logic in `ota_update_client` to not reconnect on every loop iteration. Previously, it would open a new connection for every file, but only waited on the last connection. Now it only opens one connection and waits on that connection.\r\n- I'm not sure how I can test the changes to `upd`.\r\n\r\nNext steps are:\r\n- Remove `network_manager` and `ethernet_smoltcp_device`\r\n- Tweak `net` interface to better reflect usage patterns and `std` needs\r\n- Track used ports",
+    "nwo": "theseus-os/Theseus"
+  },
+  {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 1012,
+    "pr_url": "https://github.com/theseus-os/Theseus/pull/1012",
+    "base": "c741ecc4d31c6adc81f3b31188b0ee238118b632",
+    "head": "8be41240b5a3aa882f261ec6215349e340b8be0a",
+    "title": "Implement more ergonomic CPU-local storage",
+    "body": "MVP of a `cpu_local` attribute.\r\n\r\nLimitations that will be addressed in a future PR:\r\n- Only integer types supported\r\n- CLS section offsets must be manually specified\r\n\r\n~Draft PR because the macro needs to be implemented for `aarch64`.~",
+    "nwo": "theseus-os/Theseus"
+  },
+  {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 1019,
+    "pr_url": "https://github.com/theseus-os/Theseus/pull/1019",
+    "base": "c741ecc4d31c6adc81f3b31188b0ee238118b632",
+    "head": "68c618e56d4615a37fa6bd136d9ce5199761ceb6",
+    "title": "Port of the `pci` crate",
+    "body": "This brings the following changes:\r\n- `pci::scan_pci` maps the pci config space on aarch64, in addition to what it used to do.\r\n- `pci::PciLocation` was modified so that it uses the mapping on aarch64\r\n- `device_manager` calls it (via pci_device_iter) on both platforms\r\n- I tried converting the `const` offsets to an enum but the capability \"linked-list\" from `find_pci_capability` needs the offset to be a raw u8, and I might also need custom offsets for USB support so I dropped this.\r\n- `QEMU_FLAGS` starts the virt machine with new options: `highmem=on` & `highmem-mmio=on` because without them, the PCI configuration space lies in \"low memory\" but its base address points to a bunch of zeros for some reason.\r\n\r\nNote: while `pci` currently uses port-io on x86 and mmio on aarch64, x86 may also support memory-based PCI configuration in the future; port-io is the legacy way to access the config space.",
+    "nwo": "theseus-os/Theseus"
+  },
+  {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 1019,
+    "pr_url": "https://github.com/theseus-os/Theseus/pull/1019",
+    "base": "c741ecc4d31c6adc81f3b31188b0ee238118b632",
+    "head": "ee27c46eccb8880127525082f03ea5a4694bb93d",
+    "title": "Port of the `pci` crate",
+    "body": "This brings the following changes:\r\n- `pci::scan_pci` maps the pci config space on aarch64, in addition to what it used to do.\r\n- `pci::PciLocation` was modified so that it uses the mapping on aarch64\r\n- `device_manager` calls it (via pci_device_iter) on both platforms\r\n- I tried converting the `const` offsets to an enum but the capability \"linked-list\" from `find_pci_capability` needs the offset to be a raw u8, and I might also need custom offsets for USB support so I dropped this.\r\n- `QEMU_FLAGS` starts the virt machine with new options: `highmem=on` & `highmem-mmio=on` because without them, the PCI configuration space lies in \"low memory\" but its base address points to a bunch of zeros for some reason.\r\n\r\nNote: while `pci` currently uses port-io on x86 and mmio on aarch64, x86 may also support memory-based PCI configuration in the future; port-io is the legacy way to access the config space.",
+    "nwo": "theseus-os/Theseus"
+  },
+  {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 1027,
+    "pr_url": "https://github.com/theseus-os/Theseus/pull/1027",
+    "base": "4c14a71796b0a2e840627a239fb3ea5a9e971a2b",
+    "head": "e71c417387fb62d3446e4d75bb2fec541eed6752",
+    "title": "Make use of `create_identity_mapping` in `multicore_bringup`",
+    "body": "`multicore_bringup` contained workarounds in aarch64 code because the main function needed a way to identity map any page/frame. Now that Kevin implemented that, this removes the temporary workarounds and makes use of the new `memory::create_identity_mapping` function.",
+    "nwo": "theseus-os/Theseus"
+  },
+  {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 1031,
+    "pr_url": "https://github.com/theseus-os/Theseus/pull/1031",
+    "base": "27429e57120be7b6725101fde4582dfd48b936d0",
+    "head": "a3210d5c97a28e72fc03506085bcd4525124196b",
+    "title": "Size-aware memory types",
+    "body": "Draft PR for huge pages without changes to the mapper.",
+    "nwo": "theseus-os/Theseus"
+  },
+  {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 1031,
+    "pr_url": "https://github.com/theseus-os/Theseus/pull/1031",
+    "base": "27429e57120be7b6725101fde4582dfd48b936d0",
+    "head": "b4a1049e46530295ff54780a7f956c3a2791073b",
+    "title": "Size-aware memory types",
+    "body": "Draft PR for huge pages without changes to the mapper.",
+    "nwo": "theseus-os/Theseus"
+  },
+  {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 1031,
+    "pr_url": "https://github.com/theseus-os/Theseus/pull/1031",
+    "base": "27429e57120be7b6725101fde4582dfd48b936d0",
+    "head": "f295369ae55e7e6652a1076aa494a1251a7edcbb",
+    "title": "Size-aware memory types",
+    "body": "Draft PR for huge pages without changes to the mapper.",
+    "nwo": "theseus-os/Theseus"
+  },
+  {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 1081,
+    "pr_url": "https://github.com/theseus-os/Theseus/pull/1081",
+    "base": "e06c84a3087e73f888abccdf459249f2e3655eec",
+    "head": "2d7aab64c5d9a5973bc05039214190c947c1184c",
+    "title": "Add `lspci` app, restructure PCI legacy interrupts (INTx) initialization",
+    "body": "(This PR depends on #1071)\r\n\r\nThis adds an `lspci` command:\r\n\r\n![image](https://github.com/theseus-os/Theseus/assets/61582713/1b6fa072-8264-4e04-a9bd-ff9acf38f3c8)\r\n\r\nIt takes no argument and always lists all devices.\r\n",
+    "nwo": "theseus-os/Theseus"
   }
 ]

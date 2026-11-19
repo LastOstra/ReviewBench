@@ -1,0 +1,36 @@
+{
+  "pr_key": "theseus-os_Theseus_957-a86b3eaf",
+  "pr": {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 957,
+    "base": "40805a7934710f16f90000f65497d3a61bb7b681",
+    "head": "a86b3eafeb786abd278062c40196cdc7f40a86e8"
+  },
+  "findings": [
+    {
+      "file": "kernel/memory/src/lib.rs",
+      "start_line": 121,
+      "end_line": 123,
+      "message": "this is incorrect, you're passing in the number of frames to a function that expects the number of bytes.\r\n```suggestion\r\n    let allocated_frames = allocate_frames_at(range.start_address(), num_frames)\r\n```",
+      "tp_fp": "tp",
+      "severity": "high",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "easy",
+      "context_required": "diff-only",
+      "tp_fp_justification": "新增 map_frame_range 将 num_frames 传入按字节分配的 allocate_frames_by_bytes_at，实际分配帧数约为所需 1/4096。作者 'Good catch, thank you' 并在 6cf39cd613 修复。",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "kevinaboos",
+        "url": "https://github.com/theseus-os/Theseus/pull/957#discussion_r1204840520",
+        "created_at": "2023-05-24T23:11:33Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "a86b3eafeb786abd278062c40196cdc7f40a86e8",
+        "original_start_line": 123,
+        "original_end_line": 123,
+        "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
+      }
+    }
+  ]
+}

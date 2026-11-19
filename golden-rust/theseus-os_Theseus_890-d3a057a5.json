@@ -1,0 +1,61 @@
+{
+  "pr_key": "theseus-os_Theseus_890-d3a057a5",
+  "pr": {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 890,
+    "base": "3ad24f66cc6068f50ce068a869f53147fc043a9d",
+    "head": "d3a057a55b3dac763b8aa58450e51d2e88e70d13"
+  },
+  "findings": [
+    {
+      "file": "kernel/cpu/src/aarch64.rs",
+      "start_line": 47,
+      "end_line": 53,
+      "message": "`CpuId` is supposed to be a trusted type that nobody can arbitrarily instantiate, so a publicly-available constructor like this breaks that type guarantee.\r\n\r\nIs this absolutely necessary, or can we get around it somehow? If required, let's write our or discuss the actual concrete requirements so we can brainstorm an alternate solution.",
+      "tp_fp": "tp",
+      "severity": "medium",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "difficulty": "medium",
+      "context_required": "broader-project-context",
+      "tp_fp_justification": "本 PR 为 CpuId 添加公开构造器，允许任意伪造 CpuId，破坏 'CpuId 必然对应真实 CPU' 的类型不变量（错误 API 安全契约）。作者认可并将构造器移到 MpidrValue (16b9b5df7c)。",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "kevinaboos",
+        "url": "https://github.com/theseus-os/Theseus/pull/890#discussion_r1142580100",
+        "created_at": "2023-03-20T19:18:57Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "d3a057a55b3dac763b8aa58450e51d2e88e70d13",
+        "original_start_line": 47,
+        "original_end_line": 47,
+        "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
+      }
+    },
+    {
+      "file": "kernel/multicore_bringup/src/aarch64.rs",
+      "start_line": 97,
+      "end_line": 158,
+      "message": "i love the idea of reusing stacks for CPUs that don't actually exist. if you reorganize this loop a bit, you can easily avoid some complexity and also the leaking of the last stack.",
+      "tp_fp": "tp",
+      "severity": "low",
+      "category": "reliability",
+      "scope": "introduced-by-pr",
+      "difficulty": "medium",
+      "context_required": "diff-plus-related-files",
+      "tp_fp_justification": "本 PR 新增 aarch64 handle_ap_cores 循环外预分配 NoDrop 栈并回收复用，循环结束时最后一个栈留在 ap_stack 且 NoDrop 阻止析构，内核栈泄漏。作者 'Good point. I did what you advised.' 重写循环按需分配。",
+      "producer": "human_review",
+      "source": {
+        "type": "review_comment",
+        "author": "kevinaboos",
+        "url": "https://github.com/theseus-os/Theseus/pull/890#discussion_r1142610830",
+        "created_at": "2023-03-20T19:52:03Z",
+        "alignment": "on_chosen_head",
+        "original_commit": "d3a057a55b3dac763b8aa58450e51d2e88e70d13",
+        "original_start_line": 108,
+        "original_end_line": 108,
+        "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
+      }
+    }
+  ]
+}
