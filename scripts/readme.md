@@ -79,7 +79,27 @@ npm run judge -- \
 
 # 通了以后去掉 --limit 1 跑完 25 个。
 ```
+### 第三步：自己的小数据集的运行方式额外附录
+# ① 自己 SSH 完整克隆（asterinas 几十 MB，SSH 稳）
+python3 scripts/local_run.py \
+  --manifest corpus/rust-set.json \
+  --out findings-rust \
+  --pr-agent pr-agent \
+  --skip-existing \ 
+  --limit 14 # (只跑前 14 个)
 
+# ② 判卷
+export ALIYUN_MAAS_API_KEY=你的阿里云百炼Key
+
+npm run judge -- \
+  --candidate ./findings-rust \
+  --manifest corpus/rust-set.json \
+  --golden golden-rust \
+  --provider aliyun-maas \
+  --model deepseek-v4.1-flash \
+  --repo-dir .reviewbench-repos \
+  --output ./scoring/results-rust-aliyun.json \
+  --limit 1
 常用参数：
 
 | 参数 | 默认 | 说明 |
