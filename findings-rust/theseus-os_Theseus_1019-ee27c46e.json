@@ -1,0 +1,35 @@
+{
+  "pr": {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 1019,
+    "base": "c741ecc4d31c6adc81f3b31188b0ee238118b632",
+    "head": "ee27c46eccb8880127525082f03ea5a4694bb93d"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "kernel/pci/src/lib.rs",
+      "start_line": 283,
+      "end_line": 291,
+      "message": "**Possible Bug**\n\n`pci_read_32_addr`/`pci_write_addr` on aarch64 index `PCI_CONFIG_SPACE` with the full `address` computed by `pci_address`, which includes `BASE_OFFSET` (0 on aarch64) plus bus/slot/func/offset. The mapped ECAM region is only `size_bytes` (0x10000000) long, but the address is an absolute physical address (base 0x4010000000) rather than an offset into the mapped slice. Indexing the slice with the absolute address will be out of bounds (panic) or read the wrong location. The address should be rebased by subtracting `BOARD_CONFIG.pci_ecam.base_address` before indexing."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/pci/src/lib.rs",
+      "start_line": 284,
+      "end_line": 285,
+      "message": "**Possible Bug**\n\nOn aarch64, `pci_read_32_addr`/`pci_write_addr` call `.unwrap()` on the `PCI_CONFIG_SPACE` option. If a read/write happens before `scan_pci` has populated the config space (e.g., any caller of the read/write helpers that doesn't go through `get_pci_buses`), this panics. The x86 path has no such precondition. Consider returning an error or ensuring initialization is guaranteed before these are reachable."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/pci/src/lib.rs",
+      "start_line": 82,
+      "end_line": 82,
+      "message": "**Possible Bug**\n\n`PCI_CONFIG_ADDRESS_OFFSET_MASK` changed from `0xFC` (u8) to `!0x2` (u32). The new mask only clears bit 1, not bits 0-1 as the comment (\"clear the least-significant 2 bits\") states. For the x86 shift computation `(address & !mask) * 8`, this still works for 4-byte-aligned offsets, but the mask no longer matches its documented intent and differs from the previous behavior; verify the alignment/shift logic is correct for all offsets used."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 16081
+  }
+}

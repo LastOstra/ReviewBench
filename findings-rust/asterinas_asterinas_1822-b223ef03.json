@@ -1,0 +1,13 @@
+{
+  "pr": {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 1822,
+    "base": "56b85cb132e54cc51522e6444bc17f9e00eb2ee3",
+    "head": "b223ef0352cf4cc0c6d75fe781d83c8226e7d2f8"
+  },
+  "agent": "pr-agent",
+  "findings": [],
+  "usage": {
+    "time_in_ms": 8143
+  }
+}

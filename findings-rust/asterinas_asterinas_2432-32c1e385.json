@@ -1,0 +1,35 @@
+{
+  "pr": {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 2432,
+    "base": "32581caa7a65e417787fd3d33fe2054f47cde27a",
+    "head": "32c1e385db6469783749fa544b781bee22d1bb63"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "kernel/src/syscall/mount.rs",
+      "start_line": 71,
+      "end_line": 85,
+      "message": "**Possible Bug**\n\n`do_remount_mnt` builds `new_options` from the flags via `MountOptions::from(flags)`, which starts from `MountOptions::default()` and only sets flags present in `flags`. On a remount, flags not specified in `flags` are therefore reset to their defaults (e.g. `nosuid`/`nodev`/`noexec`/`rdonly` are cleared, and atime falls back to `Relatime`). Linux semantics for `MS_REMOUNT` are to apply only the flags that are explicitly set and keep the rest of the existing mount options. A remount that only changes, say, `MS_RDONLY` will silently drop previously set `nosuid`/`nodev`/`noexec` options. Only the atime policy is preserved; the other bits are not."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/src/syscall/mount.rs",
+      "start_line": 49,
+      "end_line": 51,
+      "message": "**Possible Bug**\n\nIn the `MS_REMOUNT` (non-bind) branch, `do_remount_mnt` is called first and then `do_remount_fs`. If `do_remount_fs` fails (e.g. `set_mount_options` returns an error), the mount options have already been mutated by `do_remount_mnt`, leaving the mount in a partially updated state even though the syscall returns an error. The mount-level options should be applied only after the filesystem-level remount succeeds, or rolled back on failure."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/src/syscall/mount.rs",
+      "start_line": 186,
+      "end_line": 190,
+      "message": "**Possible Bug**\n\n`do_new_mount` calls `fs.set_mount_options(flags.into(), data, ctx)?` before `target_path.mount(fs, ctx)?`. If the mount operation subsequently fails, the filesystem's mount options have already been modified even though no mount was created. Also, `flags.into()` is computed twice (once for `set_mount_options`, once for `lock_options`), which is harmless but the ordering means a failed mount leaves side effects on the FS."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 10487
+  }
+}

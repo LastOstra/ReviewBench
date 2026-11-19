@@ -1,0 +1,35 @@
+{
+  "pr": {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 1937,
+    "base": "1e3098d734ee253cfff30a32d88cc7313f2bf39d",
+    "head": "a9c63339b357db36df0d8243a2be008ebb461714"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "kernel/comps/virtio/src/device/console/device.rs",
+      "start_line": 60,
+      "end_line": 60,
+      "message": "**Possible Bug**\n\n`compare_exchange` is now called with `callbacks_cloned` (a `Vec`) instead of `Box::new(callbacks_cloned)`. If the RCU cell stores a `Box<Vec<...>>`, this is a type mismatch and will not compile; if it stores a `Vec` directly, the previous `Box::new` was wrong. Either way the change is inconsistent with the surrounding code and needs verification that the argument type matches the RCU's `P`."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "ostd/src/sync/rcu/non_null.rs",
+      "start_line": 156,
+      "end_line": 162,
+      "message": "**Unsound ArcRef**\n\n`ArcRef::deref` returns `&self.inner` where `inner` is `ManuallyDrop<Arc<T>>`. This yields a reference to the `ManuallyDrop` wrapper, not to the `Arc<T>`; `Deref<Target = Arc<T>>` requires returning `&Arc<T>`. This likely fails to compile or, if coerced, produces a reference whose validity/layout assumptions are fragile. Use `&*self.inner` (or `Deref::deref(&self.inner)`) to obtain `&Arc<T>`."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "ostd/src/sync/rcu/non_null.rs",
+      "start_line": 190,
+      "end_line": 205,
+      "message": "**ArcRef Leak**\n\n`raw_as_ref` for `Arc<T>` constructs a new `Arc` via `Arc::from_raw` and wraps it in `ManuallyDrop`, incrementing the strong count. `ref_as_raw` then calls `Arc::into_raw(ptr_ref.inner.into())`, which moves the `ManuallyDrop` out and converts it back to a raw pointer without decrementing. The net effect is that the strong count is incremented on every `raw_as_ref` and never balanced, leaking the `Arc` allocation. The `BoxRef`/`ArcRef` abstraction needs to avoid creating an owning `Arc` in `raw_as_ref` (e.g., store the raw pointer and reconstruct a borrowed view) or ensure the count is balanced."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 10444
+  }
+}

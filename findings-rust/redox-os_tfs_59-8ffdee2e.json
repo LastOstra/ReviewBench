@@ -1,0 +1,13 @@
+{
+  "pr": {
+    "repo": "https://github.com/redox-os/tfs",
+    "pr_number": 59,
+    "base": "e30ddc042e1e094ac477861a3549abd76e2eb24b",
+    "head": "8ffdee2eb2d80dc2c4ac07d721f9e24508c575a7"
+  },
+  "agent": "pr-agent",
+  "findings": [],
+  "usage": {
+    "time_in_ms": 23596
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "pr": {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 1502,
+    "base": "998869d57e0e35929348d41f7be19aab866c1f02",
+    "head": "99f62575bce7f5ea8410d0fd7b383a88426e92ac"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "ostd/src/logger.rs",
+      "start_line": 80,
+      "end_line": 83,
+      "message": "**Log level config regression**\n\n`get_log_level` previously read the log level from the kernel command line (`ostd.log_level=...`). It now reads `option_env!(\"LOG_LEVEL\")`, which is a compile-time environment variable. Any existing boot configuration passing `log_level` via the kernel cmdline will silently stop working, and the log level can no longer be changed at runtime without recompiling. If this is intentional, it should be documented; otherwise the cmdline parsing should be retained."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/comps/logger/src/default_logger.rs",
+      "start_line": 21,
+      "end_line": 23,
+      "message": "**Missing enabled() check**\n\n`DefaultLogger::log` does not check `self.enabled(record.metadata())` before formatting and printing. The old `ostd` logger returned early when the record was not enabled. Since `log` macros generally check `enabled` first this is usually fine, but any caller that invokes `log()` directly (or a backend that relies on the logger filtering) will now print records below the configured max level. Consider adding the `enabled` guard for parity with the previous behavior."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/comps/logger/src/console.rs",
+      "start_line": 28,
+      "end_line": 42,
+      "message": "**Macro path inconsistency**\n\nThe `print!`/`println!` macros now expand to `aster_logger::_print(...)` / `aster_logger::print!(...)` using an absolute crate path rather than `$crate`. This only works if the consuming crate has `aster_logger` in scope under that exact name; `$crate` is the idiomatic and robust form for exported macros. If a downstream crate renames the dependency or uses the macros from a crate that doesn't depend on `aster-logger` directly, expansion will fail to compile."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 12913
+  }
+}

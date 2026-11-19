@@ -1,0 +1,35 @@
+{
+  "pr": {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 1009,
+    "base": "403d3e280e0d7e20854922fe771a5776a9d9a4b5",
+    "head": "f1fbdae741ffa4bb34192d31d8e7bd9f37ca871d"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "kernel/ota_update_client/src/lib.rs",
+      "start_line": 358,
+      "end_line": 371,
+      "message": "**Busy-wait loop**\n\nThe final loop that waits for the socket to close (or for the 3s timeout) no longer polls the interface or yields; it just spins on `http_client.is_closed()` and `start.elapsed()`. Since the socket can only transition to `Closed` when the interface is polled, this loop will never observe closure and will always burn CPU for the full 3 seconds before aborting. The previous code called `poll_iface` each iteration. This should poll the interface (or otherwise yield) inside the loop."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/ota_update_client/src/lib.rs",
+      "start_line": 312,
+      "end_line": 344,
+      "message": "**Socket reuse across requests**\n\nA single `HttpClient` (and thus a single TCP socket) is created once before the loop over `absolute_paths` and reused for every request. The old code explicitly closed and reconnected a fresh socket before each request because the remote endpoint closes the connection after each response. With the new code, the second and subsequent `send` calls will operate on a socket that is already closed/aborted, causing downloads of multiple files to fail. A new client/socket should be created per request (or reconnected when closed)."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/net/src/lib.rs",
+      "start_line": 72,
+      "end_line": 82,
+      "message": "**RNG init per call**\n\n`get_ephemeral_port` calls `random::init_rng::<rand_chacha::ChaChaRng>().unwrap()` on every invocation. Re-initializing the RNG each call is wasteful and, depending on `init_rng` semantics, may reseed from a low-entropy source, producing repeated/colliding ports. The `unwrap()` also panics if initialization fails. Consider initializing the RNG once and reusing it."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 11511
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "pr": {
+    "repo": "https://github.com/rust-lang/rust",
+    "pr_number": 159130,
+    "base": "ad49852b6f3dd9c1c73fe909d8843bb7e464b387",
+    "head": "c257aefd56c79af1ac53265f74d225c9660c70bd"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "library/core/src/fmt/num.rs",
+      "start_line": 831,
+      "end_line": 835,
+      "message": "**Possible Bug**\n\n`write_quad` computes `high = quad / 100` via `(quad * ((1 << 19) / 100 + 1)) >> 19`. The magic constant `(1 << 19) / 100 + 1` is `5242`, and `5242 * 9999 = 52_414_758`, which is less than `2^19 * 100 = 52_428_800`, so the shift yields `99` instead of `100` for `quad = 9999`. This produces `\"0099\"` instead of `\"9999\"` (and similarly wrong output for other values where the approximation underflows). The old code used exact `/` and `%`. This is a correctness regression in decimal formatting; it is triggered by any value whose four-digit group is 9999 (e.g. formatting `9999` or `1_9999`)."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "library/core/src/fmt/num.rs",
+      "start_line": 846,
+      "end_line": 875,
+      "message": "**Possible Bug**\n\n`write_quad` is declared `unsafe` with the invariant that `buf` contains exactly four bytes, and the caller in `enc_16lsd` passes `buf.get_unchecked_mut(OFFSET..OFFSET + 4)`. However, the `assert_unchecked(buf.len() == 4)` is only a hint and does not enforce anything; the function then indexes `buf[0..2]` and `buf[2..4]` with safe indexing, which would panic (not UB) if the slice were shorter. More importantly, the safety contract relies on `OFFSET + 16 <= buf.len()` being asserted in `enc_16lsd`, but that assertion is also only a hint. If any caller violates the documented precondition, the `get_unchecked_mut` calls in `enc_16lsd` are UB. This is a soundness concern worth double-checking against all call sites, since the previous code used checked indexing."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 16989
+  }
+}

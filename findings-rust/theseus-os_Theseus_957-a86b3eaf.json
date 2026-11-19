@@ -1,0 +1,35 @@
+{
+  "pr": {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 957,
+    "base": "40805a7934710f16f90000f65497d3a61bb7b681",
+    "head": "a86b3eafeb786abd278062c40196cdc7f40a86e8"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "kernel/memory/src/lib.rs",
+      "start_line": 121,
+      "end_line": 125,
+      "message": "**Possible Bug**\n\n`map_frame_range` computes `num_frames = range.size_in_frames()` but then calls `allocate_frames_by_bytes_at(range.start_address(), num_frames)`. The second argument of `allocate_frames_by_bytes_at` is a byte count, not a frame count, so this under-allocates by a factor of `PAGE_SIZE` (e.g. a 4096-byte range yields 1 frame requested as 1 byte). Depending on how that function rounds up, this may either fail or allocate fewer frames than the mapping needs, causing `map_allocated_pages_to` to fail or map an incorrect frame range. It should pass `range.size_in_bytes()` (or the equivalent) instead of `num_frames`."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/gic/src/gic/mod.rs",
+      "start_line": 269,
+      "end_line": 273,
+      "message": "**Possible Bug**\n\nIn `map_dist` and the other mapping blocks, the result of `page_table.map_allocated_pages_to(...)` is now bound to `mapped`, but the subsequent `mapped.into_borrowed_mut(0)` is called on the outer `mapped` that is no longer in scope / not the newly created one. The new `let mapped = ...` shadows nothing and the following line still references the previous `mapped` binding, which no longer exists after the change, so this will not compile (or, if a stale binding exists, maps the wrong pages). The `into_borrowed_mut` call should be chained onto the new `map_allocated_pages_to` result."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/serial_port_basic/src/aarch64.rs",
+      "start_line": 60,
+      "end_line": 62,
+      "message": "**Possible Bug**\n\n`map_mmio_range(*mmio_base, PAGE_SIZE)` is called and its `Result` is immediately followed by `.expect(...)`, but the `let mapped_pages = map_mmio_range(...)` line ends without the `.expect`, and the `.expect(...)` is attached to the next statement. As written the `Result` is bound to `mapped_pages` and `.expect` is applied to something else, so `mapped_pages.start_address()` would be called on a `Result`, which does not compile. The `.expect` must be chained directly onto the `map_mmio_range` call."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 14808
+  }
+}

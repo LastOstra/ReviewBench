@@ -1,0 +1,35 @@
+{
+  "pr": {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 859,
+    "base": "7fc1719d8d8ffb161397a08608a9eed0ce1b5443",
+    "head": "215bc9f9e095379a4b2dafe499dc5ef99697c6e6"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "kernel/waker_generic/src/lib.rs",
+      "start_line": 108,
+      "end_line": 113,
+      "message": "**Deadlock in wake_by_ref**\n\n`wake_by_ref` acquires the `woken` mutex and then calls `(self.wake_action)()` while still holding the lock. In the `join()` use case, `wake_action` calls `curr_task.unblock()`, which schedules the blocked task. If that scheduling path (or any other wake_action) ever touches the same `woken` lock, or if the woken task immediately re-enters `Blocker::block` and tries to lock `woken` before the waker drops it, this deadlocks. More concretely, the lock is held across an arbitrary user-supplied closure, which is a classic lock-ordering hazard. The `woken` flag should be set and the lock released before invoking `wake_action`."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/task/src/lib.rs",
+      "start_line": 414,
+      "end_line": 430,
+      "message": "**Lost wakeup / missed exit**\n\n`join()` checks `!self.has_exited()` and only then registers the waker via `set_waker`. If the target task exits between the `has_exited()` check and `set_waker`, the exit path's `waker.take()` will find no waker (or a stale one), and the waker registered afterwards will never be woken, causing `blocker.block()` to loop forever. The check-and-register must be done atomically with respect to the exit path (e.g., under the same `inner().lock()` that the exit path uses when taking the waker)."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/task/src/lib.rs",
+      "start_line": 432,
+      "end_line": 442,
+      "message": "**Removed is_running wait**\n\nThe previous `while self.is_running() { }` wait was removed, with a comment noting uncertainty. If `reap_exit_value()` or subsequent cleanup assumes the task has fully stopped running on all cores (e.g., freeing stack/resources still in use), dropping this wait can cause use-after-free or races. The PR itself flags this as unverified; confirm that no code path relies on the task having stopped running before `reap_exit_value()` is called."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 11656
+  }
+}

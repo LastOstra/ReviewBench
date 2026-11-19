@@ -1,0 +1,35 @@
+{
+  "pr": {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 1031,
+    "base": "27429e57120be7b6725101fde4582dfd48b936d0",
+    "head": "a3210d5c97a28e72fc03506085bcd4525124196b"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "kernel/memory_structs/src/lib.rs",
+      "start_line": 397,
+      "end_line": 401,
+      "message": "**Double scaling in AddAssign**\n\n`AddAssign` calls `(*self).add(rhs * P::NUM_4K_PAGES)`, but `Add::add` already multiplies `rhs` by `P::NUM_4K_PAGES`. For a `Page2MiB`, `p += 1` advances by 512*512 = 262144 4K pages instead of 512. This silently corrupts page/frame arithmetic for huge pages. `SubAssign` correctly passes `rhs` unscaled, so the two are inconsistent."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/memory_structs/src/lib.rs",
+      "start_line": 540,
+      "end_line": 542,
+      "message": "**Wrong empty range start**\n\n`empty()` now constructs the start chunk with `number: 11` instead of the previous `number: 1`. Since `is_empty()` relies on `start > end`, this still yields an empty range, but the magic value 11 is unexplained and inconsistent with the prior sentinel; if any code inspects the start of an empty range it will observe an unexpected value. Should be `number: 1` (or a documented constant)."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/memory_structs/src/lib.rs",
+      "start_line": 578,
+      "end_line": 581,
+      "message": "**size_in_bytes ignores page size**\n\n`size_in_pages()` now divides by `P::NUM_4K_PAGES`, but `size_in_bytes()` still multiplies by `PAGE_SIZE` (4KiB). For a `PageRange<Page2MiB>` of 3 pages, `size_in_bytes()` returns 3*4096 instead of 3*2MiB. Any caller using `size_in_bytes()` on a huge-page range gets a value 512x (or 512*512x) too small. It should multiply by `P::SIZE_IN_BYTES`."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 15798
+  }
+}

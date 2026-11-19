@@ -1,0 +1,35 @@
+{
+  "pr": {
+    "repo": "https://github.com/redox-os/termion",
+    "pr_number": 29,
+    "base": "12c0ad04dbf6fc30081c2e23b2edfa409c340717",
+    "head": "cc9c32b981363771c7a6e011aa103255277d157b"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "src/event.rs",
+      "start_line": 144,
+      "end_line": 157,
+      "message": "**Possible Panic**\n\nThe xterm mouse parsing branch (`ESC [ < ...`) and the numbered escape code branch use `iter.next().unwrap().unwrap()` in loops and `parse::<u16>().unwrap()` on the split buffer. If the input stream ends or contains malformed data (e.g., a truncated mouse sequence, or a non-numeric byte), this panics instead of returning an error. Since `Events::next` calls `parse_event` on arbitrary terminal input, a malformed sequence from the terminal will crash the program. The same applies to `parse_utf8_char`, which unwraps `iter.next()` and `str::from_utf8` results."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "src/event.rs",
+      "start_line": 204,
+      "end_line": 205,
+      "message": "**Wrong WheelDown Mapping**\n\nIn the rxvt mouse encoding branch, both `96` and `97` map to `Mouse::Press(MouseButton::WheelUp)`. `97` should map to `WheelDown`, so scrolling down via rxvt encoding is reported as scrolling up."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "src/raw.rs",
+      "start_line": 18,
+      "end_line": 18,
+      "message": "**Mouse Mode Always Enabled**\n\n`into_raw_mode` unconditionally writes `ENTER_MOUSE_SEQUENCE`, enabling mouse reporting for every raw-mode user, and `Drop` unconditionally writes `EXIT_MOUSE_SEQUENCE`. This changes behavior for all existing consumers of raw mode (e.g., programs that don't want mouse events) and may interfere with terminal state. Also, on the Redox `Drop` impl, `try!(self.write(...))` is used inside a `Drop::drop` returning `()`, which will not compile since `try!` returns a `Result`."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 10609
+  }
+}

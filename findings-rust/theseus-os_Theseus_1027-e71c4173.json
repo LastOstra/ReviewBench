@@ -1,0 +1,28 @@
+{
+  "pr": {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 1027,
+    "base": "4c14a71796b0a2e840627a239fb3ea5a9e971a2b",
+    "head": "e71c417387fb62d3446e4d75bb2fec541eed6752"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "kernel/multicore_bringup/src/aarch64.rs",
+      "start_line": 62,
+      "end_line": 69,
+      "message": "**Possible Bug**\n\n`ap_startup_mapped_pages` is now created before the `kernel_mmi` lock is acquired and is no longer declared outside the block as a variable held for the duration of AP bringup. Previously the comment explicitly noted the mapping \"must be held throughout APs being booted up\". If `MappedPages` unmaps/frees its frames on drop, and this binding is dropped before the APs actually start executing the copied entry point, the identity mapping could be torn down while secondary cores still need it. Verify the mapping's lifetime covers the entire `cpu_on` sequence."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/multicore_bringup/src/aarch64.rs",
+      "start_line": 62,
+      "end_line": 62,
+      "message": "**Possible Bug**\n\n`create_identity_mapping(1, flags)` is called before taking the `kernel_mmi` lock, while the subsequent `page_table.translate(virt_addr)` is done under the lock. If `create_identity_mapping` internally acquires the same `kernel_mmi` lock, this is fine, but if it does not, the page table is mutated without the lock, which can race with other cores. Confirm `create_identity_mapping` performs its own locking; otherwise the mapping creation should be moved inside the locked block."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 14845
+  }
+}

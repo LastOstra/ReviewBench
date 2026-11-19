@@ -1,0 +1,35 @@
+{
+  "pr": {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 1861,
+    "base": "56b85cb132e54cc51522e6444bc17f9e00eb2ee3",
+    "head": "d5569147cb121ba367c104bc6b7a5fbf291efc06"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "kernel/src/syscall/prctl.rs",
+      "start_line": 121,
+      "end_line": 129,
+      "message": "**Wrong children traversal**\n\nIn `propagate_has_child_subreaper`, the BFS loop iterates over `current_process.children()` instead of `process.children()`. As a result, only the direct children of the original process are ever enqueued; grandchildren and deeper descendants never get `has_child_subreaper` set. This breaks the documented invariant that the flag must be true for all descendants, so orphaned grandchildren of a subreaper may be reparented to init instead of the subreaper. Trigger: set a subreaper, then fork a child that forks a grandchild, then have the child exit."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/src/process/exit.rs",
+      "start_line": 75,
+      "end_line": 92,
+      "message": "**Possible Deadlock**\n\n`copy_process_children` acquires `reaper_process.children()` lock and then, inside the loop, locks each `child_process.parent`. Meanwhile `find_reaper_process` locks `parent` and then reads `process.parent()`. If two processes exit concurrently and each is the other's reaper candidate, lock ordering on `children` vs `parent` can deadlock. Also, `find_reaper_process` walks `parent` locks while `copy_process_children` holds `children` locks, which is a lock-order inversion risk. Confidence is limited but impact (kernel hang) is high."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/src/process/exit.rs",
+      "start_line": 100,
+      "end_line": 104,
+      "message": "**Possible Infinite Loop**\n\n`move_children_to_reaper_process` loops `while let Some(reaper_process) = find_reaper_process(...)`. If `copy_process_children` keeps returning `Err(())` (e.g., the found reaper is a zombie), `find_reaper_process` will keep returning the same zombie reaper and the loop never terminates, hanging the exiting process. The fallback to init is only reached if `find_reaper_process` returns `None`."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 10590
+  }
+}

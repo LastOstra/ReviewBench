@@ -1,0 +1,35 @@
+{
+  "pr": {
+    "repo": "https://github.com/rust-lang/rust",
+    "pr_number": 122441,
+    "base": "9ce37dc7290e60bd0dfc7a5d4fcdbbd836f989f0",
+    "head": "cc92a9b8267beddb181fd7598d85dccae6fdbb96"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "library/std/src/io/mod.rs",
+      "start_line": 2927,
+      "end_line": 2941,
+      "message": "**Possible Bug**\n\nIn `Take::read_exact`, the limit is incremented (`self.limit += len`) after a successful read instead of being decremented. This is the opposite of `read`/`read_buf`, which subtract the consumed bytes. As a result, after a successful `read_exact` the limit grows, allowing subsequent reads to consume more than the original limit. It should be `self.limit -= len`."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "library/std/src/io/mod.rs",
+      "start_line": 2990,
+      "end_line": 3004,
+      "message": "**Possible Bug**\n\n`Take::read_buf_exact` has the same inverted accounting as `read_exact`: on success it does `self.limit += cap` instead of subtracting the bytes actually written. This inflates the limit and lets later reads exceed the intended bound. It should subtract the number of bytes written to the cursor."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "library/std/src/io/mod.rs",
+      "start_line": 2927,
+      "end_line": 2941,
+      "message": "**Incorrect EOF Handling**\n\n`Take::read_exact` returns `Ok(())` when `self.limit == 0` regardless of whether `buf` is empty. If a caller requests a non-empty buffer after the limit is exhausted, this silently succeeds without filling the buffer, violating the `read_exact` contract (it should return `UnexpectedEof`). The same applies to `read_buf_exact` when the cursor has remaining capacity."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 11148
+  }
+}

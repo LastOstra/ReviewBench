@@ -1,0 +1,28 @@
+{
+  "pr": {
+    "repo": "https://github.com/redox-os/sodium",
+    "pr_number": 61,
+    "base": "ade5e35fc1455dc8ff7c5dbbea848defc345f808",
+    "head": "5a32b4d05deffa3326504b95b67e070bdae08cb1"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "src/state/options.rs",
+      "start_line": 23,
+      "end_line": 23,
+      "message": "**Wrong Default**\n\n`readonly` defaults to `true`, so every editor session starts in read-only mode even though the feature is not implemented. The `-R` flag is meant to opt into read-only mode, but with this default the flag is a no-op and normal editing is effectively disabled by default. The default should be `false`."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "src/state/editor.rs",
+      "start_line": 235,
+      "end_line": 238,
+      "message": "**Silent File Drop**\n\nWhen multiple file arguments are passed, only `files[0]` is opened and the rest are silently ignored. A user running `sodium a.txt b.txt` will believe both files are open. At minimum, warn about unsupported extra files rather than dropping them silently."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 19085
+  }
+}

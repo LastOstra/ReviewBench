@@ -1,0 +1,35 @@
+{
+  "pr": {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 2445,
+    "base": "b0407dd5173552b59cf08f84a5e44914b60e67bd",
+    "head": "b842e92e3978c2655c56f3fe76f3671221675735"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "kernel/src/fs/path/resolver.rs",
+      "start_line": 298,
+      "end_line": 318,
+      "message": "**Deadlock**\n\n`for_each_thread` holds the global `THREAD_TABLE` lock while invoking the closure, and the closure calls `posix_thread.read_fs()` / `ns_proxy().lock()`. If any of those paths (or a concurrent thread doing `add_thread`/`remove_thread`/`get_thread` while holding a lock that the closure needs) acquires the thread table lock, this deadlocks. More concretely, the closure also calls `fs_resolver.set_root`/`set_cwd` while the table lock is held, so any code path that takes the thread table lock while holding a resolver write lock will deadlock. The table lock should be released before running the callback (e.g., snapshot the `Arc<Thread>` values under the lock, then iterate)."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/src/fs/path/resolver.rs",
+      "start_line": 310,
+      "end_line": 315,
+      "message": "**Wrong cwd update condition**\n\nThe per-thread cwd update compares `fs_resolver.cwd() == &self.root` instead of comparing against the thread's own root. A thread whose cwd happens to equal the caller's root but whose root is different will have its cwd silently changed, and a thread whose cwd equals the caller's root but whose root differs is mishandled. The condition should compare the thread's cwd against the thread's own root (i.e., `fs_resolver.cwd() == fs_resolver.root()`), matching the documented behavior that only threads whose root and cwd are the same as the caller's are updated."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/src/fs/path/resolver.rs",
+      "start_line": 275,
+      "end_line": 294,
+      "message": "**Missing put_old mountpoint check**\n\nThe code checks that `put_old` is underneath `new_root` but never verifies that `put_old` is not itself a mountpoint (or that it is not the same as `new_root`). Linux returns `EBUSY` when `put_old` is a mountpoint. Without this check, `self.root.mount.graft_mount_tree(&put_old_path)` can graft the old root onto a path that already has a mount, producing an inconsistent mount tree. Also, `put_old` being equal to `new_root` is not rejected."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 10072
+  }
+}

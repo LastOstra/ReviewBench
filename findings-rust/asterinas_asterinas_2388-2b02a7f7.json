@@ -1,0 +1,28 @@
+{
+  "pr": {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 2388,
+    "base": "ef099996fcc5d29bc8af90ca92793b315936bbc3",
+    "head": "2b02a7f7034de24778e19eaa66159ee77af32c82"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "kernel/src/syscall/mount.rs",
+      "start_line": 111,
+      "end_line": 139,
+      "message": "**Missing propagation flag check**\n\n`do_change_type` validates that at most one propagation flag is set, but does not reject the case where zero propagation flags are present. The caller only invokes `do_change_type` when `mount_flags.intersects(MS_PROPAGATION)` is true, so this path is currently guarded. However, if `do_change_type` is ever reached with no propagation flag (e.g., a future refactor or a direct call), it falls through to the `else` branch and returns `EINVAL` with \"unsupported propagation type\" rather than the more accurate \"no propagation flag\" error. This is a minor robustness concern; the current call site prevents it."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/src/fs/path/mount.rs",
+      "start_line": 187,
+      "end_line": 204,
+      "message": "**Recursive propagation ignores mount tree semantics**\n\n`set_propagation` with `recursive = true` walks all children and sets their propagation type unconditionally. In Linux, `MS_REC` propagation changes only apply to mounts that are part of the same peer group / propagation tree, and `MS_PRIVATE` on a shared mount should also detach it from its peer group. Since only `Private` is implemented and no peer groups exist yet, this is not a functional bug today, but the recursive walk will need to be revisited when other propagation types are added. Flagging as a design note rather than a defect."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 14379
+  }
+}

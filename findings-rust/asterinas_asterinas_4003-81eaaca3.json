@@ -1,0 +1,28 @@
+{
+  "pr": {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 4003,
+    "base": "4012f3770348991918845ba021a7d5bbbf5f1f12",
+    "head": "81eaaca313dd128905a2b0d3a1e9a607a24c2d5e"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "kernel/core/src/syscall/chown.rs",
+      "start_line": 118,
+      "end_line": 125,
+      "message": "**Missing CAP_CHOWN for no-op**\n\n`may_set_uid`/`may_set_gid` only allow the change when the caller is the file owner and the requested ID equals the current one. When a non-owner passes the current uid/gid (a no-op chown), `no_cap_needed` is false and `CAP_CHOWN` is required, so the call fails with EPERM. Linux's `chown_ok()` permits a no-op (uid == inode uid) regardless of ownership, so a non-owner calling `chown(path, current_uid, -1)` should succeed but here returns EPERM. The `is_owner &&` guard should not gate the equality case."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/core/src/syscall/chown.rs",
+      "start_line": 137,
+      "end_line": 158,
+      "message": "**Missing CAP_FSETID check**\n\nThe set-group-ID preservation logic uses `require_cap(ctx, CapSet::FSETID).is_ok()` to decide whether to keep the bit, but the overall permission gate only checks `CAP_CHOWN` (via `no_cap_needed`) and `CAP_FOWNER` (for the mode change). A caller that is the owner but not in the file's group and lacks `CAP_FSETID` will have the set-group-ID bit stripped, which matches Linux, but a caller with `CAP_FSETID` but not `CAP_FOWNER`/owner will still be blocked by the `may_change_mode` check even though Linux allows the FSETID holder to preserve the bit. Verify the interaction between the FSETID and FOWNER checks matches `setattr_prepare()`/`chown_ok()` semantics."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 15168
+  }
+}

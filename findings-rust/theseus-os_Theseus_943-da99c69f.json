@@ -1,0 +1,35 @@
+{
+  "pr": {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 943,
+    "base": "5ca803592e1722d0dc748fa7cc4b7c84b9c8b470",
+    "head": "da99c69f85663ca480d1d859ef322e77598f5219"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "kernel/interrupts/src/x86_64/mod.rs",
+      "start_line": 40,
+      "end_line": 40,
+      "message": "**Possible Bug**\n\nThe x86_64 `interrupt_handler!` macro matches `CallerMustSignalEoi` without a path qualifier (`if let CallerMustSignalEoi = $code`). Since the macro is `#[macro_export]` and expands in the caller's crate, this only resolves if the caller has imported `EoiBehaviour` variants into scope. Callers that only import `EoiBehaviour` (not the variant) or use a different name will fail to compile. Use `$crate::EoiBehaviour::CallerMustSignalEoi` for robustness."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/scheduler/src/lib.rs",
+      "start_line": 64,
+      "end_line": 93,
+      "message": "**Possible Bug**\n\nThe `timer_tick_handler` macro invocation passes `None` as the interrupt number, but the x86_64 macro expansion calls `$crate::eoi($x86_64_interrupt_number)` when the handler returns `CallerMustSignalEoi`. Here the handler returns `HandlerHasSignaledEoi`, so `eoi(None)` is not invoked by the macro; however, the handler body only calls `eoi(...)` inside the `if false` block, meaning the timer EOI is never signaled on x86_64. Previously `lapic_timer_handler` also did not call eoi, so verify the timer interrupt is acknowledged elsewhere; if not, this is a regression."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/serial_port/src/lib.rs",
+      "start_line": 376,
+      "end_line": 391,
+      "message": "**Possible Bug**\n\nThe serial handlers now return `EoiBehaviour::CallerMustSignalEoi`, and the x86_64 macro will call `$crate::eoi(...)` with the provided interrupt number. This relies on the macro's `if let CallerMustSignalEoi = $code` matching correctly; if the variant is not in scope in this crate (only `EoiBehaviour` is imported), the macro will not compile. Confirm the variant is resolvable or qualify it in the macro."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 11608
+  }
+}

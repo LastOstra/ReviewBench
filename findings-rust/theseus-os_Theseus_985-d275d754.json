@@ -1,0 +1,35 @@
+{
+  "pr": {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 985,
+    "base": "490407b2be935197483f3c43433d72eff0273a4c",
+    "head": "d275d754fb0685777d20ed110b2b4d8f20fdb40e"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "kernel/sync_block/src/lib.rs",
+      "start_line": 97,
+      "end_line": 108,
+      "message": "**Priority inheritance race**\n\nThe `deinherit_priority` closure is created before `wait_until` blocks, and it captures the holder's priority at that moment. If the holder releases the lock and another task acquires it (or the holder's priority changes) while this task is blocked, the restore will set the priority back to a stale value. More importantly, `inherit_priority` is only called after the fast-path retry, but the holder could release the lock between the `try_lock` failure and the `inherit_priority` call, so the priority is boosted for a task that no longer holds the lock. The restore then lowers the priority of a task that may now be a legitimate holder, potentially causing priority inversion. This is a narrow race but affects correctness of the priority inheritance protocol."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/runqueue_epoch/src/lib.rs",
+      "start_line": 281,
+      "end_line": 281,
+      "message": "**Possible Bug**\n\n`inherit_priority` calls `task::get_my_current_task().unwrap()`. If invoked from a context without a current task (e.g., during early boot or from an interrupt/other core context), this panics. The `sync_block` caller runs in task context so this is likely fine, but the public API has no documented precondition and the unwrap is a hard panic. Consider returning an empty closure or documenting the requirement."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/runqueue_priority/src/lib.rs",
+      "start_line": 268,
+      "end_line": 293,
+      "message": "**Possible Bug**\n\nSame as the epoch variant: `task::get_my_current_task().unwrap()` will panic if there is no current task. Additionally, the `debug_assert!` around `set_priority` means that in release builds the priority boost is silently skipped if the task is not found on the expected core (e.g., due to migration), while the restore closure still runs and may lower the priority. This asymmetry can leave the task at the wrong priority in release builds."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 15810
+  }
+}

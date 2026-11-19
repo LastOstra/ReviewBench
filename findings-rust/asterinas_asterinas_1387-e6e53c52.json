@@ -1,0 +1,28 @@
+{
+  "pr": {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 1387,
+    "base": "0a36760f7a42b7fe27735e29f971423f6ec4b1ca",
+    "head": "e6e53c5204e54a4dfb7945eedcddefef3200ce56"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "ostd/src/mm/page_table/mod.rs",
+      "start_line": 96,
+      "end_line": 102,
+      "message": "**Possible Bug**\n\n`clear_user_space` only clears the first half of the root page table entries (`0..NR_PTES_PER_NODE / 2`). This assumes the user space always maps to exactly the lower half of the address space. If the user/kernel split is not exactly at the midpoint of the root node's entries (e.g., a different `MAX_USERSPACE_VADDR` or paging configuration), some user mappings would remain, or kernel mappings could be cleared. The loop bound should be derived from the actual user-space address range rather than a hardcoded half."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "ostd/src/mm/vm_space.rs",
+      "start_line": 138,
+      "end_line": 143,
+      "message": "**TLB Flush Scope**\n\n`clear_user_space` issues a TLB flush only on the current CPU (`issue_tlb_flush` + `dispatch_tlb_flush`). If the VMAR is shared across CPUs (e.g., another thread on a different CPU is running with this page table active), stale TLB entries for the cleared user mappings may persist on those CPUs, allowing access to freed/unmapped memory. Confirm whether the caller guarantees no other CPU is using this address space, or use a cross-CPU TLB shootdown."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 9729
+  }
+}

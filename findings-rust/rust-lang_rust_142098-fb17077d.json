@@ -1,0 +1,35 @@
+{
+  "pr": {
+    "repo": "https://github.com/rust-lang/rust",
+    "pr_number": 142098,
+    "base": "22be76b7e259f27bf3e55eb931f354cd8b69d55f",
+    "head": "fb17077d1e3ff61f192e7d7eec923c2e4629cd66"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "library/core/src/fmt/num.rs",
+      "start_line": 432,
+      "end_line": 432,
+      "message": "**Possible Bug**\n\nIn `_inner_slow_integer_to_str`, the function ends with `cur` (line 432), but the local variable declared in this function is `curr` (line 414). This is a compile error (unresolved name `cur`) in the `optimize_for_size` build configuration. It should return `curr`."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "library/core/src/fmt/num.rs",
+      "start_line": 803,
+      "end_line": 812,
+      "message": "**Possible Bug**\n\n`u128::format_into` computes `diff = buf.capacity() - U128_MAX_DEC_N` and then calls `self._fmt(...)` on the sub-slice starting at `diff`. `_fmt` returns a `&str` borrowed from that sub-slice, which is then returned directly. However, the returned `&str` is not offset-adjusted and, more importantly, the `diff` offset is never added back, so the returned slice is relative to the sub-slice rather than the full buffer. This is inconsistent with the `i128` implementation which adds `diff` back to the offset. The result is that for `u128` the returned `&str` may not correspond to the intended buffer region (and the comment about \"add 1 to the returned offset\" is not implemented). Verify the returned string is correct for all inputs."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "library/core/src/fmt/num.rs",
+      "start_line": 361,
+      "end_line": 367,
+      "message": "**Possible Bug**\n\nIn the signed `format_into` (macro-generated), when `self < 0`, `offset -= 1` is performed and `buf.buf[offset].write(b'-')` is called. If `self` is `MIN` and the buffer is exactly sized, the offset could underflow. More concretely, for `i128::MIN` the `_fmt_inner` writes 39 digits; with `NumBuffer` capacity 40 there is room for the sign, but the `optimize_for_size` path uses `_inner_slow_integer_to_str` whose returned offset semantics must be consistent. Confirm the offset arithmetic cannot underflow for `MIN` values across all integer types."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 18266
+  }
+}

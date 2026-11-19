@@ -1,0 +1,28 @@
+{
+  "pr": {
+    "repo": "https://github.com/rust-lang/rust",
+    "pr_number": 139632,
+    "base": "7d7de5bf3c3cbf9c2c5bbc5cbfb9197a8a427d35",
+    "head": "694a6b9f8bc911536eaefdcd0ab470849030937d"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "library/core/src/fmt/rt.rs",
+      "start_line": 100,
+      "end_line": 106,
+      "message": "**Possible Bug**\n\nThe CFI-enabled branch of `argument_new!` uses a closure `|ptr: NonNull<()>, fmt: &mut Formatter<'_>| { ... }` as the `formatter` field, but the field type is `fn(NonNull<()>, &mut Formatter<'_>) -> Result`. A non-capturing closure can coerce to a fn pointer, so this likely compiles, but the closure's body calls `$f` (e.g. `<T as Display>::fmt`) through `func`, which is fine. The concern is that this branch is only compiled under `sanitize = \"cfi\"`/`\"kcfi\"`, so it is not exercised by normal CI builds; a type or coercion error here would only surface in sanitizer builds. Verify the closure coerces correctly and that `$f` is a valid `fn(&$t, &mut Formatter<'_>) -> Result` in all call sites (e.g. `new_debug_noop` passes a closure, which is fine, but confirm it coerces)."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "library/core/src/fmt/rt.rs",
+      "start_line": 68,
+      "end_line": 111,
+      "message": "**Possible Bug**\n\nThe `argument_new!` macro is defined at module scope but is not marked with `#[macro_export]` or `#[allow(unused_macros)]`. If the macro is only used within this module it is fine, but if any cfg combination leaves it unused (e.g. the macro is defined unconditionally while all uses are behind some cfg), it could trigger an `unused_macros` warning. Confirm the macro is used in all configurations where it is defined."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 10287
+  }
+}

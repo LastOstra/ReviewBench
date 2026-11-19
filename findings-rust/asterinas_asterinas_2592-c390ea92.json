@@ -1,0 +1,35 @@
+{
+  "pr": {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 2592,
+    "base": "314fbe285a656cea82344b4c121cb061a6d41224",
+    "head": "c390ea92ffcf11b143a926ff8756e7e55b50a0c5"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "kernel/src/fs/cgroupfs/controller/mod.rs",
+      "start_line": 337,
+      "end_line": 347,
+      "message": "**Possible Deadlock**\n\n`LockedController::deactivate` iterates over children and calls `cgroup_child.controller().lock()` while the caller already holds the current node's controller lock (and, for `CgroupNode`, the parent's controller lock). The documented lock order is parent -> current -> child, but here a child lock is acquired while holding the current lock, and the child's own `deactivate`/`activate` path acquires the parent (current) lock again. This can deadlock when deactivating a controller on a node whose child has also activated it, or under concurrent subtree_control writes on parent and child."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/src/fs/cgroupfs/systree_node.rs",
+      "start_line": 606,
+      "end_line": 620,
+      "message": "**Lock Ordering Violation**\n\nIn `CgroupNode::node_attrs`, the parent controller lock is acquired and then `self.controller.for_each_attr` is called, while `read_attr_at`/`write_attr` for `cgroup.subtree_control` acquire the parent lock first and then the current lock. However, `create_child` acquires `self.controller.lock()` and then calls `with_inner`, and `write_attr` for `cgroup.subtree_control` acquires parent then current then `with_inner`. Mixing controller locks with the `inner` RwMutex in different orders across these paths risks deadlock under concurrent attribute access and child creation."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/src/fs/cgroupfs/systree_node.rs",
+      "start_line": 612,
+      "end_line": 613,
+      "message": "**Possible Panic**\n\n`CgroupNode::node_attrs` calls `self.cgroup_parent().unwrap()`. For a node whose parent has been removed or is being torn down, `parent()` may return `None`, causing a panic during attribute enumeration (e.g., `readdir`). Similarly `read_attr_at` for `cgroup.controllers` uses `self.cgroup_parent().unwrap()`. Consider handling the `None` case gracefully."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 21995
+  }
+}

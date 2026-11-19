@@ -1,0 +1,35 @@
+{
+  "pr": {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 813,
+    "base": "2e8c8a6922a5d75e5f27eca24481ad2511184082",
+    "head": "26b8912ad7653e05291891223f7ae279823850b0"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "kernel/wait_queue/src/lib.rs",
+      "start_line": 26,
+      "end_line": 46,
+      "message": "**Possible Lost Wakeup**\n\n`wait_until` now pushes the current task into the queue via `push_if_fail` and blocks it inside the condition closure, but the task is never removed from the queue when the condition succeeds. If the condition returns `Some` on the first check (before the task is ever pushed), the task is not enqueued, which is fine; however, if the condition succeeds after the task was pushed and blocked, the task remains in the queue. A later `notify_one` will pop this stale task and call `unblock()` on an already-runnable task, consuming a notification that should have gone to a genuinely waiting task. This can cause a real waiter to never be woken, i.e. a lost wakeup / hang. The old implementation removed the task from the queue atomically when the condition was satisfied."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/wait_queue/src/lib.rs",
+      "start_line": 32,
+      "end_line": 40,
+      "message": "**Blocking Under Lock**\n\nIn `wait_until`, `task.block()` is invoked inside the closure passed to `push_if_fail`, which is executed while the queue's internal mutex is held (see `mpmc_queue::Queue::push_if_fail`). Blocking the current task while holding the queue lock means that if the task is switched away before the lock is released, no other task can acquire the queue lock to notify it, causing deadlock. The removed implementation explicitly documented that task runstate changes must be atomic with respect to the waitqueue lock but must not block while holding it. This is a serious correctness regression for the core wait primitive."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/wait_queue/src/lib.rs",
+      "start_line": 41,
+      "end_line": 45,
+      "message": "**Stale Task Re-push**\n\nBecause the task is never removed from the queue on successful condition completion, a task that wakes up and returns from `wait_until` may still be present in the queue. If the same task later calls `wait_until` again, `push_if_fail` will enqueue a duplicate entry for the same task. `notify_one` may then pop the duplicate and unblock a task that is not actually blocked, returning `true` while no real waiter was woken. This compounds the lost-wakeup issue above."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 12405
+  }
+}

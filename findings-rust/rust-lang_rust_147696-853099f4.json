@@ -1,0 +1,35 @@
+{
+  "pr": {
+    "repo": "https://github.com/rust-lang/rust",
+    "pr_number": 147696,
+    "base": "e100792918c8bd9e0cb830f96fc9b171e8892fa1",
+    "head": "853099f49c4680bf1f46802cb4f6a153717574dd"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "library/core/src/num/int_macros.rs",
+      "start_line": 82,
+      "end_line": 84,
+      "message": "**Possible Panic**\n\n`bit` and `set_bit` shift by `index` without validating it. For `index >= $BITS`, `(1 as $SelfT) << index` overflows the shift, which panics in debug builds and is UB-adjacent/masked in release. The `#[track_caller]` attribute suggests a panic is expected, but there is no explicit check or documented panic behavior. Callers passing an out-of-range index get inconsistent behavior between debug and release. Consider adding an explicit bounds check with a documented panic, or masking the index."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "library/core/src/num/uint_macros.rs",
+      "start_line": 84,
+      "end_line": 86,
+      "message": "**Possible Panic**\n\nSame issue as in `int_macros.rs`: `bit` and `set_bit` shift by `index` without bounds checking. An `index >= $BITS` causes a shift overflow panic in debug builds and silently wrong results in release. Add an explicit check and document the panic, or mask the index."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "tests/ui/const-generics/issues/issue-86820.rs",
+      "start_line": 8,
+      "end_line": 8,
+      "message": "**Test Semantics Changed**\n\nThe regression test previously exercised the inherent method `0xffu8.bit::<0>()` (the `Bits` trait method). It now calls `Bits::bit::<0>(0xffu8)`, which is the same trait method but the change appears to be adapting to the new inherent `bit` method. Verify the test still exercises the intended ICE path; if the inherent `bit` now shadows the trait method, the original `0xffu8.bit::<0>()` call would resolve to the inherent method and no longer test the trait, so the rewrite may be masking the regression scenario."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 14729
+  }
+}

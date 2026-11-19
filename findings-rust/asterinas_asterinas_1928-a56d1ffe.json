@@ -1,0 +1,28 @@
+{
+  "pr": {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 1928,
+    "base": "9872adaa718b6b98d99a564cd4f6f716757d4830",
+    "head": "a56d1ffea6ba140c20fb3eb86251b8f536139d53"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "ostd/src/cpu/mod.rs",
+      "start_line": 127,
+      "end_line": 129,
+      "message": "**Blanket PinCurrentCpu impl**\n\nThe blanket `unsafe impl<T: AtomicModeGuard> PinCurrentCpu for T {}` relies on `AtomicModeGuard` being sound. However, `AtomicModeGuard` is also blanket-implemented for any `G: BorrowAsAtomicModeGuard` (see `atomic_mode.rs`), and `BorrowAsAtomicModeGuard` is a safe trait. A user can implement `BorrowAsAtomicModeGuard` for an arbitrary type whose `borrow()` returns a reference to some unrelated long-lived `AtomicModeGuard` (e.g. a leaked/static guard), making that type `AtomicModeGuard` and thus `PinCurrentCpu` even though the current task is not actually pinned. This would make `current_cpu()` return a stale CPU id. The safety of the whole chain depends on `BorrowAsAtomicModeGuard` being unsafe or otherwise constrained."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "ostd/src/task/atomic_mode.rs",
+      "start_line": 77,
+      "end_line": 86,
+      "message": "**Safe trait enables unsound AtomicModeGuard**\n\n`BorrowAsAtomicModeGuard` is a safe trait, but it is used to derive the unsafe `AtomicModeGuard` via a blanket impl. Since `AtomicModeGuard` is a safety-critical marker (used for `PinCurrentCpu` and RCU/SpinLock soundness), allowing safe code to obtain it by implementing `borrow()` returning any `&dyn AtomicModeGuard` (e.g. a reference to a guard held elsewhere or a leaked guard) breaks the invariant that the current task is actually in atomic mode. Consider making `BorrowAsAtomicModeGuard` an `unsafe trait` so implementers must uphold the invariant."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 9620
+  }
+}

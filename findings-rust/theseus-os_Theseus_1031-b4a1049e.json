@@ -1,0 +1,35 @@
+{
+  "pr": {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 1031,
+    "base": "27429e57120be7b6725101fde4582dfd48b936d0",
+    "head": "b4a1049e46530295ff54780a7f956c3a2791073b"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "kernel/memory_structs/src/lib.rs",
+      "start_line": 389,
+      "end_line": 407,
+      "message": "**Double Scaling Bug**\n\n`AddAssign` and `SubAssign` multiply `rhs` by `P::NUM_4K_PAGES` and then delegate to `Add`/`Sub`, which already multiply `rhs` by `P::NUM_4K_PAGES`. For huge pages this scales the operand twice: e.g. `Page2MiB` `+= 1` advances by 512*512 = 262144 4K pages instead of 512. Any code using `+=`/`-=` on huge pages will jump far beyond the intended chunk. `SubAssign` also calls `sub(rhs)` without the scaling, so it is inconsistent with `AddAssign`."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/memory_structs/src/lib.rs",
+      "start_line": 549,
+      "end_line": 552,
+      "message": "**Wrong Size in Bytes**\n\n`size_in_bytes` computes `size_in_pages() * PAGE_SIZE`, but `size_in_pages()` now returns the count of chunks of size `P` (e.g. 2MiB pages), not 4K pages. For a `PageRange<Page2MiB>` covering one 2MiB page, `size_in_pages()` is 1, so `size_in_bytes()` returns 4096 instead of 2097152. It should multiply by `P::SIZE_IN_BYTES`."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/memory_structs/src/lib.rs",
+      "start_line": 544,
+      "end_line": 547,
+      "message": "**Possible Overflow**\n\nIn `size_in_pages`, `self.0.end().number + (1 * P::NUM_4K_PAGES)` can overflow `usize` when the end page number is near `MAX_PAGE_NUMBER` (e.g. a range ending at the last page). The previous code used `+ 1` with the same risk, but the multiplication by `NUM_4K_PAGES` makes overflow reachable at lower addresses for huge pages. Consider `saturating_add`."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 15551
+  }
+}

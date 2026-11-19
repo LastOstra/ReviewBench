@@ -1,0 +1,13 @@
+{
+  "pr": {
+    "repo": "https://github.com/rust-lang/rust",
+    "pr_number": 154052,
+    "base": "53d60bb1c5d325b43419c7618287a1405dec36d0",
+    "head": "d57cfdfad02e9cae75874412c0df06986938a377"
+  },
+  "agent": "pr-agent",
+  "findings": [],
+  "usage": {
+    "time_in_ms": 8402
+  }
+}

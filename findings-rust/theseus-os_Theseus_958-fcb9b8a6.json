@@ -1,0 +1,35 @@
+{
+  "pr": {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 958,
+    "base": "40805a7934710f16f90000f65497d3a61bb7b681",
+    "head": "fcb9b8a69ddfacf4c1ea71147bc7e6916d159577"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "kernel/pci/src/lib.rs",
+      "start_line": 609,
+      "end_line": 620,
+      "message": "**Possible Bug**\n\nIn `MsixVectorEntry::configure`, the destination core id is computed as `(cpu_id.into_u8() as u32) << MSIX_DEST_ID_SHIFT` and OR'd into the lower address. The previous ixgbe code did the same shift, but note that `MSIX_ADDRESS_BITS` is `0xFFFF_FFF0` and the address is masked with `!MSIX_ADDRESS_BITS`, which only clears the low 4 bits. The destination id field (bits 12-19) is not cleared before OR-ing, so if the existing lower address already has bits set in that field, the new dest id will be OR'd on top of stale bits, potentially routing the interrupt to the wrong core. Verify that the initial lower address has zeroed destination bits, or mask them out explicitly."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/ixgbe/src/lib.rs",
+      "start_line": 995,
+      "end_line": 998,
+      "message": "**Possible Bug**\n\n`enable_rx_dca` and the MSI-X setup now call `cpu::bootstrap_cpu().expect(...)` when `cpu_id` is `None`. Since all queues are initialized with `cpu_id: None.into()`, this means every queue falls back to the BSP. Previously the fallback was `0`. If `bootstrap_cpu()` returns `None` (e.g., called before CPU info is initialized), this will panic the kernel. Confirm that `bootstrap_cpu()` is guaranteed to be available at this point in NIC initialization."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/memory/src/lib.rs",
+      "start_line": 121,
+      "end_line": 125,
+      "message": "**Possible Bug**\n\n`map_frame_range` computes `num_frames = range.size_in_frame()` and then calls `allocate_frames_by_bytes_at(range.start_address(), num_frames)`. The second argument to `allocate_frames_by_bytes_at` is a byte count, not a frame count, so passing `num_frames` here allocates only `num_frames` bytes worth of frames (i.e., a fraction of a frame) instead of `num_frames` frames. This will under-allocate frames for any range larger than one frame, causing the mapping to fail or map fewer frames than requested. It should pass `range.size_in_bytes()` (or `num_frames * PAGE_SIZE`)."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 11814
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "pr": {
+    "repo": "https://github.com/redox-os/users",
+    "pr_number": 5,
+    "base": "50f4022e6c713a131bbbfde360cb0f369e96c672",
+    "head": "65d0b53b3e62afe0a2e6c189e56235c4fd78d296"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "src/lib.rs",
+      "start_line": 464,
+      "end_line": 478,
+      "message": "**Possible Bug**\n\nIn `get_unique_group_id`, the inner loop uses `continue` instead of `break` when a matching gid is found. `continue` only skips to the next group in the same iteration, so `used` stays `true` for the rest of that gid's check (which is fine), but the intent is clearly to stop scanning once a match is found. More importantly, the outer loop re-parses the entire group file for every candidate gid via `all_groups()`, making this O(MAX_GID * groups) file reads. The `continue` should be a `break` (or the check restructured) to avoid the redundant work and to make the logic correct/clear."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "src/lib.rs",
+      "start_line": 437,
+      "end_line": 461,
+      "message": "**Possible Bug**\n\n`add_group` and `add_user` write entries using `;` as the field separator, but the `Group::parse`/`User::parse` functions split on `;` while the actual `/etc/passwd` and `/etc/group` formats conventionally use `:`. If the parse functions split on `;` this is consistent, but the doc comments reference `/etc/groups` (should be `/etc/group`) and the added entries must match the parser's separator. Verify the separator matches what `parse` expects; a mismatch would produce unparseable entries."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "src/lib.rs",
+      "start_line": 444,
+      "end_line": 504,
+      "message": "**Panic on IO Error**\n\n`add_group` and `add_user` return `Result<(), &'static str>` but call `.unwrap()` on `OpenOptions::open` and `file.write`. If the file cannot be opened (e.g., permission denied) or the write fails, the function panics instead of returning an `Err`, contradicting the documented \"Returns Result with error information if the operation was not successful\". The `Pleasefix` comment acknowledges this but it is still a real defect."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 11304
+  }
+}

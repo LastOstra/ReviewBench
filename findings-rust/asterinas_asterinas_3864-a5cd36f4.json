@@ -1,0 +1,28 @@
+{
+  "pr": {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 3864,
+    "base": "bc0c867186616fba6b467259cb653ac200910a95",
+    "head": "a5cd36f40b9ca32fffe937644e1e9b1a80a6d9a6"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "kernel/core/src/syscall/chmod.rs",
+      "start_line": 89,
+      "end_line": 124,
+      "message": "**Possible Bug**\n\nThe `fsuid` check only verifies ownership against `metadata.uid`, but the FOWNER capability check is skipped when `fsuid == metadata.uid`. This matches Linux semantics for the owner case, but note that `fsuid` is used rather than the real uid, which is correct. However, there is a subtle issue: the S_ISGID clearing logic uses `credentials.fsgid()` and `credentials.groups()`, but does not account for the case where the caller is the file owner. In Linux, the S_ISGID bit is cleared when the caller is not in the file's group AND lacks CAP_FSETID, regardless of ownership. This appears consistent. The main concern is that `path.metadata()` is called before the read-only check on the actual inode, but the RDONLY check is on mount/fs flags, which is fine. No clear bug here."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/core/src/syscall/chmod.rs",
+      "start_line": 99,
+      "end_line": 105,
+      "message": "**Missing EPERM Check**\n\nIn `do_chmod`, when the caller is not the file owner and lacks CAP_FOWNER, the LSM `on_capable` hook returns an error, which is propagated. However, the standard Linux behavior for `chmod` on a file not owned by the caller without CAP_FOWNER is to return EPERM. The LSM hook may return a different errno depending on the security module. This is likely acceptable if the LSM hook returns EPERM, but worth verifying the hook's error semantics."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 16152
+  }
+}

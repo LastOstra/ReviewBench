@@ -1,0 +1,21 @@
+{
+  "pr": {
+    "repo": "https://github.com/rust-lang/rust",
+    "pr_number": 165284,
+    "base": "f90a2d27c2a1e18f10f4fd84c0dcd02710c37de8",
+    "head": "d6bbfd1e10a3078e37db546f7d0b76bfdc2f419b"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "library/core/src/fmt/num.rs",
+      "start_line": 350,
+      "end_line": 367,
+      "message": "**Possible Unsoundness**\n\nThe new `assert!(buf.len() >= $T::MAX.ilog10() as usize + 1)` is meant to guarantee the unchecked write is in-bounds, but the SAFETY comment justifies it using `u32::MAX.ilog10() + 1` while the assertion uses `$T::MAX`. For `$T = u128`, `u128::MAX.ilog10() + 1 == 39`, which is fine, but the comment's reasoning is inconsistent with the actual bound. More importantly, the assertion only checks the buffer length once at entry; the loop decrements `curr` starting from `buf.len()`, so the number of iterations is bounded by `n.ilog10() + 1 <= $T::MAX.ilog10() + 1 <= buf.len()`, which does hold. However, if any caller passes a buffer shorter than `$T::MAX.ilog10() + 1` (e.g. a small stack buffer sized for a specific value rather than the type max), the assertion will panic in debug but the `get_unchecked_mut` in release builds relies on the assertion being present. Verify all call sites of `${concat($fmt_fn, _in_buf_small)}` pass a buffer of at least `$T::MAX.ilog10() + 1` bytes; otherwise this is a release-mode out-of-bounds write."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 14384
+  }
+}

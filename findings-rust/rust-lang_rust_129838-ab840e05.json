@@ -1,0 +1,35 @@
+{
+  "pr": {
+    "repo": "https://github.com/rust-lang/rust",
+    "pr_number": 129838,
+    "base": "d571ae851d93541bef826c3c48c1e9ad99da77d6",
+    "head": "ab840e05d2715d48a8e9600912283a539c1afad5"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "library/std/src/sys/pal/uefi/process.rs",
+      "start_line": 697,
+      "end_line": 727,
+      "message": "**Missing NUL terminator**\n\n`create_args` builds the UEFI load options string but never appends a terminating NUL (`NULL` is declared but unused). UEFI load options are expected to be a NUL-terminated string; without the terminator the child image may read past the buffer when parsing its command line, producing garbage arguments or out-of-bounds reads. The `NULL` constant being defined but unused is a strong hint the terminator was intended."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "library/std/src/sys/pal/uefi/process.rs",
+      "start_line": 514,
+      "end_line": 516,
+      "message": "**Possible UB on drop**\n\nIn `Drop`, `Box::from_raw(crate::slice::from_raw_parts_mut(ptr, len))` is used to reconstruct the boxed slice. `from_raw_parts_mut` requires a properly aligned, non-null pointer and a valid slice length; more importantly, the allocation was created via `Box<[u16]>` in `set_args`, so reconstructing it this way relies on the fat-pointer layout matching. If `set_args` is never called, `self.args` is `None` and this is skipped, but if `set_args` is called twice, the first allocation leaks. Prefer storing the `Box<[u16]>` directly in the struct (or a `Vec<u16>`) instead of a raw `(ptr, len)` pair to avoid manual memory management and potential UB."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "library/std/src/sys/pal/uefi/process.rs",
+      "start_line": 119,
+      "end_line": 123,
+      "message": "**Args not set when empty**\n\nIn `output`, `set_args` is only called when `!self.args.is_empty()`. However, `create_args` always includes the program name, so even with zero user args the load options should contain the quoted program name. Skipping `set_args` when there are no user args means the child image receives no load options at all, which may differ from expected behavior where the program name is passed. Verify whether the program name should still be set in this case."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 11629
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "pr": {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 917,
+    "base": "2e8c8a6922a5d75e5f27eca24481ad2511184082",
+    "head": "7999e496c3c8c39a7ce94929de4f1670109cf12d"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "kernel/cpu_local/src/lib.rs",
+      "start_line": 200,
+      "end_line": 207,
+      "message": "**Wrong offset for initializer**\n\n`init()` writes the initial `PerCpuData` value through `CpuLocal::<{FixedCpuLocal::SELF_PTR_OFFSET}, P>`, i.e. at offset 0, which is the `self_ptr` field. The `PerCpuData` struct is `#[repr(C)]` and starts with `self_ptr: usize`, so writing a whole `P` at offset 0 overwrites the self pointer with the struct's first field value. Since `PerCpuData::new` sets `self_ptr` to the passed-in `self_ptr`, this happens to work only because the initializer is given the same value; but the intent (and the `FixedCpuLocal` offsets) is that the struct begins at offset 0 with `self_ptr` as its first field. This is fragile and the `CpuLocal::<0, P>` type is not validated against `FixedCpuLocal` (no `new_fixed` call), so a mismatch between `PerCpuData` layout and the `FixedCpuLocal` offsets would silently corrupt data. Consider using `new_fixed`-style validation or documenting the invariant explicitly."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/cpu_local/src/lib.rs",
+      "start_line": 209,
+      "end_line": 223,
+      "message": "**Temp test code left in**\n\nThe `if true { ... }` block with `test_value`/`test_string` logging is explicitly marked \"TODO Remove, temp tests\" but is committed. It runs on every CPU init, performs `log::warn!` calls (which may be unsafe/undesirable during early AP bring-up before logging is fully set up on that CPU), and accesses hardcoded offsets 32 and 40 that are not defined in `FixedCpuLocal`. This should be removed before merge."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/cpu_local/src/lib.rs",
+      "start_line": 39,
+      "end_line": 42,
+      "message": "**PreemptionCount size mismatch**\n\n`FixedCpuLocal::PREEMPTION_COUNT` declares `size: 1, align: 1`, but `PreemptionCount` wraps an `AtomicU8` (size 1) — that part matches. However `TASK_SWITCH_PREEMPTION_GUARD` declares `size: 8, align: 4` for `Option<PreemptionGuard>`, and `DROP_AFTER_TASK_SWITCH` declares `size: 8, align: 8` for `Option<TaskRef>`. These sizes/alignments are hardcoded and must exactly match the actual `PerCpuData` field layout; if `PreemptionGuard` or `TaskRef` change size, `with`/`with_mut` will read/write out of bounds or misaligned. There is no compile-time assertion tying these constants to the real types. Consider adding `const` assertions (e.g. `const _: () = assert!(size_of::<Option<PreemptionGuard>>() == 8);`) to catch drift."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 12729
+  }
+}

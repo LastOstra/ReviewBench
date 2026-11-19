@@ -1,0 +1,28 @@
+{
+  "pr": {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 2388,
+    "base": "cded205535e176963dc49bf40f4c8492c2289c6c",
+    "head": "ee60723c2a299b0798d390d28b2a7bb849adf56d"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "kernel/src/syscall/mount.rs",
+      "start_line": 121,
+      "end_line": 135,
+      "message": "**Missing flag check**\n\n`do_change_type` only rejects flags outside `ALLOWED_FLAGS`, but does not reject the case where no propagation flag is set at all. If `sys_mount` is reached with only `MS_REC` (or `MS_SILENT`) set, `propagation_flags` is empty, the `count_ones() > 1` check passes, and the code falls into the `else` branch returning `EINVAL`. This is arguably acceptable, but more importantly the branch is entered via `mount_flags.intersects(MS_PROPAGATION)`, so a call with only `MS_REC` would not reach here. Verify the intended behavior for a zero propagation flag matches Linux semantics (Linux returns `EINVAL` for no type flag, so this is likely fine, but the empty-flag path is not explicitly handled)."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/src/fs/path/mount.rs",
+      "start_line": 216,
+      "end_line": 227,
+      "message": "**Lock ordering / deadlock risk**\n\n`set_propagation` acquires `self.propagation.write()` and then, while iterating, acquires `mount.children.read()` and `mount.propagation.write()` for each child. If another thread concurrently performs a similar recursive operation in the opposite direction (or holds a child's `propagation` write lock while acquiring the parent's), this can deadlock. The current code releases the parent's `propagation` write lock before the loop (the assignment completes first), so the immediate risk is limited, but the pattern of taking `children.read()` then `propagation.write()` per node should be reviewed against other lock acquisition orders in the mount tree."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 19859
+  }
+}

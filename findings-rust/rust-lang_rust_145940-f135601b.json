@@ -1,0 +1,35 @@
+{
+  "pr": {
+    "repo": "https://github.com/rust-lang/rust",
+    "pr_number": 145940,
+    "base": "6ba0ce40941eee1ca02e9ba49c791ada5158747a",
+    "head": "f135601b07a9bf623691751d139b6bf8b9a6af86"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "library/core/src/fmt/num.rs",
+      "start_line": 427,
+      "end_line": 439,
+      "message": "**Possible Bug**\n\nIn the `Some(fmt_prec)` branch where `fmt_prec < coef_prec`, the code computes `scale = 10^less_prec` and then `half = scale / 2`. When `less_prec == 1`, `scale == 10` and `half == 5`, so a remainder of exactly 5 rounds to even via `floor & 1`. However, the rounding logic only inspects the single dropped digit (`over`), not the digits beyond it. For example, `1.25` formatted with precision 1: `coef=125`, `coef_prec=2`, `fmt_prec=1`, `less_prec=1`, `scale=10`, `floor=12`, `over=5`, `half=5`, `round_up = floor & 1 = 0`, producing `1.2`. But `1.25` is exactly halfway between `1.2` and `1.3`, and round-half-to-even should give `1.2` (even) — this case is correct. The concern is when `over == half` but there are additional nonzero digits beyond the dropped position that are not visible because `coef` was already truncated. Verify that `coef` retains all significant digits at this point; if trailing zeros were stripped earlier (the `None` branch strips them, but the `Some` branch does not), the tie detection could be wrong. Confirm with a test like `format!(\"{:.1e}\", 125)` vs `format!(\"{:.1e}\", 135)`."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "library/core/src/fmt/num.rs",
+      "start_line": 398,
+      "end_line": 411,
+      "message": "**Possible Bug**\n\nThe `more_prec` computation for `Some(fmt_prec) if fmt_prec >= coef_prec` returns `fmt_prec - coef_prec`, but `coef_prec` was set to `exp` (the ilog10 of the original `n`), not adjusted for the case where `n == 0`. For `n == 0`, `checked_ilog10()` returns `None`, so `exp = 0` and `coef_prec = 0`. With `f.precision() == Some(2)`, `more_prec = 2`, and the output becomes `0.00e0`. Verify this matches the documented behavior for `{:.2e}` on zero; the old implementation produced `0.00e0` as well, so this may be intentional, but the `coef_prec == 0 && more_prec == 0` fast path at line 461 skips writing the `.` and fraction, which for `n == 0` with no precision yields `0e0` — confirm this is the expected output."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "library/core/src/fmt/num.rs",
+      "start_line": 461,
+      "end_line": 496,
+      "message": "**Possible Bug**\n\nIn the `optimize_for_size` fraction-writing loop, `fraction_range` is `2..2 + coef_prec`. When `coef_prec == 0` but `more_prec > 0` (e.g. `n == 0` with precision), the loop body never executes and `remain` stays as `coef`. Then `lead_dec = remain` is used as the leading digit. For `n == 0`, `coef == 0`, so `lead_dec == 0`, which is fine. But if `coef_prec == 0` and `coef != 0` (shouldn't happen given `coef_prec = exp`), the leading digit would be wrong. More importantly, when `coef_prec > 0`, after the loop `remain` holds the leading digit(s) — but for `coef_prec >= 2` with the two-at-a-time path, `remain` after dividing by 100 repeatedly may still be >= 10 if `coef_prec` is large relative to the number of digits in `coef`. Verify `debug_assert!(lead_dec < 10)` holds for all inputs, e.g. `format!(\"{:.0e}\", 5)` where `coef_prec=0` and `more_prec=0` takes the fast path, but `format!(\"{:.1e}\", 5)` gives `coef_prec=0`, `more_prec=1`, `fraction_range=2..2` (empty), `remain=5`, `lead_dec=5` — correct. Check `format!(\"{:.0e}\", 15)`: `exp=1`, `coef_prec=1`, `more_prec=0`, `fraction_range=2..3`, writes one digit, `remain=1`, `lead_dec=1` — correct."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 14659
+  }
+}

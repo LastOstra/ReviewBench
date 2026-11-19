@@ -1,0 +1,35 @@
+{
+  "pr": {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 1019,
+    "base": "c741ecc4d31c6adc81f3b31188b0ee238118b632",
+    "head": "68c618e56d4615a37fa6bd136d9ce5199761ceb6"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "kernel/pci/src/lib.rs",
+      "start_line": 263,
+      "end_line": 272,
+      "message": "**Wrong ECAM address computation**\n\nOn aarch64, `pci_address_and_shift` builds the address using the x86 port-io layout (bus<<16 | slot<<11 | func<<8 | offset), but this address is then used directly as a byte offset into the mapped ECAM region (`config_space.as_ptr().add(address)`). ECAM requires the offset to be `(bus<<20) | (slot<<15) | (func<<12) | offset`, so every access will read/write the wrong location in the config space (and likely out of bounds for larger bus/slot values). The x86 and aarch64 paths need distinct address computations."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/pci/src/lib.rs",
+      "start_line": 286,
+      "end_line": 297,
+      "message": "**Unaligned volatile access**\n\nIn `pci_read_32`/`pci_write` on aarch64, the pointer is computed as `base + address` where `address` is not guaranteed to be 4-byte aligned (the low 2 bits of `offset` are masked, but the bus/slot/func encoding combined with the wrong ECAM layout above can produce unaligned addresses). Casting to `*mut u32` and doing a volatile read/write on an unaligned address is undefined behavior on aarch64. Even with a correct ECAM layout, the offset must be masked to 4-byte alignment before the cast."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/pci/src/lib.rs",
+      "start_line": 161,
+      "end_line": 170,
+      "message": "**Possible deadlock**\n\n`scan_pci` holds the `PCI_CONFIG_SPACE` mutex while calling `try_call_once`, and the closure passed to `try_call_once` is the one that maps the config space. If `pci_read_32`/`pci_write` (which also lock `PCI_CONFIG_SPACE`) are invoked during the scan while the outer lock is held, this will deadlock on the non-reentrant `Mutex`. The mapping should be done outside the lock, or the lock should not be held across the scan."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 11908
+  }
+}

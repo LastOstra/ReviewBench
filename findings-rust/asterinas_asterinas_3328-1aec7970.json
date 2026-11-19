@@ -1,0 +1,35 @@
+{
+  "pr": {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 3328,
+    "base": "7f3a096428b9607793c312e065c8c778b73c9748",
+    "head": "1aec7970aa7e8d01a1adbe9d0671e41fd0d619d2"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "kernel/src/fs/vfs/fs_apis/registry.rs",
+      "start_line": 279,
+      "end_line": 314,
+      "message": "**Cache race / TOCTOU**\n\n`get_or_create` releases the lock before calling `create_fn`, then re-acquires and rechecks. If two threads mount the same key concurrently, both may run `create_fn` (e.g. `ExfatFs::open` / `Ext2::open` on the same block device), and the second one's freshly created filesystem is silently dropped in favor of the first. For block-device-backed filesystems this means two concurrent opens of the same device, which can corrupt on-disk state or fail. The recheck only avoids storing the duplicate, not creating it. Consider holding a per-key in-progress marker or serializing creation."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/src/fs/fs_impls/virtiofs/fs.rs",
+      "start_line": 68,
+      "end_line": 70,
+      "message": "**Key mismatch with create**\n\n`obtain_key` derives the cache key from `fs_creation_ctx.source()` (the raw source string), while `create` derives the tag from `fs_creation_ctx.args()` (the mount data). If the source and the tag differ (e.g. source is a device path or empty while the tag is passed via `data`), the cache key will not correspond to the actual virtio-fs instance being created, so two mounts of the same tag with different sources would not deduplicate, and two different tags with the same source could incorrectly share an instance. The key should be computed from the same value `create` uses."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/src/fs/fs_impls/exfat/fs.rs",
+      "start_line": 502,
+      "end_line": 507,
+      "message": "**Silent key failure**\n\n`obtain_key` swallows errors from `resolve_block_device()` via `.ok()`, returning `None` on failure. When `None` is returned, `get_or_create` bypasses the cache and calls `create`, which will then surface the error. This is functionally okay, but combined with `create` also calling `resolve_block_device()` again, the device is resolved twice per mount. Minor, but worth noting for consistency with the ext2 path."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 11681
+  }
+}

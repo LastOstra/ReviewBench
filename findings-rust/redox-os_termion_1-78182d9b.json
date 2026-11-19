@@ -1,0 +1,21 @@
+{
+  "pr": {
+    "repo": "https://github.com/redox-os/termion",
+    "pr_number": 1,
+    "base": "22ef24096750e182698b7cbfd7655713037842bd",
+    "head": "78182d9b70a9382cb93c9fe561242547438bc58b"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "src/extra.rs",
+      "start_line": 18,
+      "end_line": 23,
+      "message": "**Possible Bug**\n\nSwitching from `self.chars()` to `self.bytes()` and pushing `c as char` means each byte is cast to a `char` individually. For any non-ASCII input (UTF-8 multibyte sequences), this produces mojibake: e.g. 'é' (0xC3 0xA9) becomes two separate chars 'Ã' and '©'. Previously `chars()` decoded UTF-8 correctly. If passwords may contain non-ASCII characters, the returned password will be corrupted."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 15379
+  }
+}

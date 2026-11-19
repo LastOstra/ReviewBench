@@ -1,0 +1,28 @@
+{
+  "pr": {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 3339,
+    "base": "b23e91b8873ac818c56eec3ad95e90bdfccf5e9b",
+    "head": "8cfed512166b9e1fe0cc7dfd25f4476b6e46d57e"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "ostd/src/arch/x86/tdx_guest.rs",
+      "start_line": 101,
+      "end_line": 141,
+      "message": "**Possible Bug**\n\nIn `convert_gpa_range`, the `TdxRetry` branch only advances `next_gpa` when the retry GPA differs from `next_gpa`. If the VMM returns a `retry_gpa` that is greater than `next_gpa` but not page-aligned relative to the start, or more importantly, if the VMM returns a retry GPA that is *less* than `next_gpa` but still within `(next_gpa..end_gpa)` — which cannot happen since the range starts at `next_gpa` — the logic is fine. However, the real concern: when `retry_gpa != next_gpa`, `next_gpa` is set to `retry_gpa` and the loop re-issues `map_gpa` with `remaining_size = end_gpa - next_gpa`. This is correct only if all pages before `retry_gpa` were already successfully converted. The TDX spec's `TdxRetry` semantics return the GPA at which the operation should be retried, and pages before it are considered done, so this is likely correct. Lower confidence; flagging only for verification."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "ostd/src/mm/dma/util.rs",
+      "start_line": 304,
+      "end_line": 327,
+      "message": "**Possible Bug**\n\n`panic_page_convert_error` is gated behind `#[cfg(all(target_arch = \"x86_64\", any(debug_assertions, feature = \"cvm_guest\")))]`, but it is called unconditionally inside `if_tdx_enabled!` blocks in both `alloc_unprotect_physical_range` and `dealloc_protect_physical_range`. If `if_tdx_enabled!` expands to code that is compiled on x86_64 without `debug_assertions` and without the `cvm_guest` feature, the call to `panic_page_convert_error` will fail to compile because the function is not defined. This depends on how `if_tdx_enabled!` is implemented; if it always compiles the inner block on x86_64, this is a build break in release builds without `cvm_guest`."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 10571
+  }
+}

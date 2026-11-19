@@ -1,0 +1,35 @@
+{
+  "pr": {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 917,
+    "base": "d2ed7ac1e9c6364dbc3961aa36efee945adbd884",
+    "head": "e0310316bd3ab0a3c32c6404507cc65685e8a8a6"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "kernel/cpu_local/src/lib.rs",
+      "start_line": 44,
+      "end_line": 53,
+      "message": "**Hardcoded field offsets**\n\n`PerCpuField::offset()` returns hardcoded numeric offsets (8, 12, 16, 24, 32, 40) that must match the layout of `per_cpu::PerCpuData`. The `const_assertions` module in `per_cpu` only checks the first four fields; `TestValue` (32) and `TestString` (40) are not asserted. More importantly, `PerCpuData` contains `Option<PreemptionGuard>` and `Option<TaskRef>` whose sizes/alignments are not guaranteed to be 8 bytes, so if any of these types change size, the hardcoded offsets silently become wrong and `with()`/`with_mut()` will read/write the wrong memory. This is a memory-safety hazard. Consider deriving offsets from `offset_of!` or adding const assertions for every field."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/cpu_local/src/lib.rs",
+      "start_line": 162,
+      "end_line": 170,
+      "message": "**Unsound mutable aliasing**\n\n`with_mut()` disables interrupts but does not hold preemption, and it creates a `&mut T` from a raw pointer without any guarantee of exclusive access. If two tasks on the same CPU call `with_mut()` on the same field (e.g., the `TestString` push_str path), or if an interrupt handler accesses the field immutably while a task holds the `&mut`, this produces aliasing UB. The doc comment acknowledges interrupt-handler mutation is unsupported but the type system does not enforce it. At minimum, preemption should also be held in `with_mut()` to prevent task migration/switch during the mutable borrow."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/cpu_local/src/lib.rs",
+      "start_line": 221,
+      "end_line": 225,
+      "message": "**Debug logging left in**\n\n`set_as_current_cpu_local_base()` logs a `warn!` on every CPU initialization (\"Writing value ... to GSBASE\"), and `per_cpu::init()` contains a `if true { ... }` block that logs and mutates test values/strings on every CPU boot. These are clearly temporary debug artifacts that will spam logs and perform unnecessary work in production. They should be removed before merge."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 11796
+  }
+}

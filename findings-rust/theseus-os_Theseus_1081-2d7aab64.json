@@ -1,0 +1,35 @@
+{
+  "pr": {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 1081,
+    "base": "e06c84a3087e73f888abccdf459249f2e3655eec",
+    "head": "2d7aab64c5d9a5973bc05039214190c947c1184c"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "kernel/pci/src/lib.rs",
+      "start_line": 240,
+      "end_line": 242,
+      "message": "**Wrong interrupt vector**\n\nThe `pci_intx_handler` is registered with a hardcoded interrupt number of `0` (the `TODO` comment even notes \"this zero value is incorrect\"). On x86_64, `set_intx_waker` registers this handler for the device's actual IRQ (`irq + IRQ_BASE_OFFSET`), but the handler macro binds it to vector 0. This means the real INTx vector will not dispatch to this handler, and vector 0 (a reserved/exception vector on x86) may be overwritten. INTx interrupts will not be delivered correctly."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/pci/src/lib.rs",
+      "start_line": 246,
+      "end_line": 248,
+      "message": "**INTx disabled before wake**\n\nIn the INTx handler, `pci_enable_intx(false)` is called before waking the device's waker. Disabling INTx in the handler means the device's legacy interrupt is masked until something re-enables it. If the waker's task does not re-enable INTx (e.g., the e1000 driver path), subsequent interrupts from that device will be lost. Verify that the wake path re-enables INTx, otherwise interrupts stop after the first one."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/pci/src/lib.rs",
+      "start_line": 243,
+      "end_line": 253,
+      "message": "**Possible deadlock**\n\nThe handler holds `INTX_DEVICES.lock()` while iterating and, inside the loop, locks `device.intx_waker`. `set_intx_waker` acquires `intx_waker` first and then `INTX_DEVICES`, the opposite lock order. If a device triggers an interrupt while `set_intx_waker` runs concurrently, this lock-order inversion can deadlock. Consider releasing `INTX_DEVICES` before taking `intx_waker`, or enforcing a consistent lock order."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 11006
+  }
+}

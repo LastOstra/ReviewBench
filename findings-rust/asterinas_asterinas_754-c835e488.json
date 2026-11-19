@@ -1,0 +1,35 @@
+{
+  "pr": {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 754,
+    "base": "2002db548196a7c4c0f9a36e40b3bb68d7e6141e",
+    "head": "c835e48875d96336bc1a7c806f77add4a0f8a6ca"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "framework/aster-frame/src/trap/softirq.rs",
+      "start_line": 144,
+      "end_line": 158,
+      "message": "**Softirq re-enable skipped on early return**\n\nIn `process_pending`, `disable_softirq_local()` is called before the `CpuLocal::borrow_with(&PENDING_MASK, ...)` closure, but the closure contains an early `return` when `action_mask == 0`. That `return` exits `process_pending` entirely, skipping the `enable_softirq_local()` call at the end. As a result, softirqs remain disabled on the current CPU after the first invocation that finds no pending work, so subsequent `raise()` calls will never be processed (and `is_softirq_enabled()` stays false). The re-enable must happen on all exit paths (e.g., via a guard or by moving the enable before returning)."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "framework/aster-frame/src/trap/handler.rs",
+      "start_line": 173,
+      "end_line": 174,
+      "message": "**Softirq processed with interrupts enabled**\n\n`process_pending()` is invoked after `crate::arch::irq::enable_local()`, so softirq callbacks run with local interrupts enabled. The softirq handlers (e.g., `taskless_softirq_handler`) take `SpinLock`s via `lock_irq_disabled()` and manipulate per-CPU lists; running them with interrupts enabled allows a nested interrupt to re-enter `call_irq_callback_functions` and `process_pending` on the same CPU, which can lead to re-entrant list manipulation or lock contention/deadlock scenarios. Consider processing softirqs before re-enabling local interrupts."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/aster-nix/src/taskless.rs",
+      "start_line": 156,
+      "end_line": 162,
+      "message": "**Possible Bug**\n\nIn `taskless_softirq_handler`, when a taskless is found `is_running`, it is pushed back and the softirq is re-raised. However, `is_scheduled` is not reset in that path, and the re-raise happens while holding the `taskless_list` lock inside `borrow_with`. More importantly, the `is_running` check can never be true for a taskless that was just taken from the list and set to `is_scheduled=false` before running, so this branch appears unreachable in the single-CPU flow; if it is reachable, the taskless is re-queued but `is_scheduled` remains true, so a later `schedule()` call will be a no-op and the taskless may never run again. Verify the intended semantics of `is_running`/`is_scheduled` here."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 12390
+  }
+}

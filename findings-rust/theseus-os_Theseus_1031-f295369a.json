@@ -1,0 +1,35 @@
+{
+  "pr": {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 1031,
+    "base": "27429e57120be7b6725101fde4582dfd48b936d0",
+    "head": "f295369ae55e7e6652a1076aa494a1251a7edcbb"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "kernel/memory_structs/src/lib.rs",
+      "start_line": 425,
+      "end_line": 431,
+      "message": "**Step arithmetic bug**\n\n`forward_checked` and `backward_checked` use `count + P::CONTAINED_4K` instead of `count * P::CONTAINED_4K`. For a 2MiB page, advancing by 1 step should move 512 4K-pages, but this moves only 513, so iteration over huge-page ranges produces wrong pages (and the `steps_between` division by `CONTAINED_4K` is inconsistent with it). This is the core iteration path exercised by the new tests."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/memory_structs/src/lib.rs",
+      "start_line": 507,
+      "end_line": 507,
+      "message": "**Wrong empty range**\n\n`empty()` now constructs the range with `number: 11` as start and `number: 0` as end. The previous code used `1`/`0`. With start=11 and end=0, `size_in_pages` computes `(0 + 1).saturating_sub(11) = 0`, so it still reports empty, but `start_address()`/`start()` now point to page 11 rather than a sane empty start, and `contains_range`/`overlap`/`to_extended` behavior on an empty range is affected. The magic `11` looks like a leftover debug value."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/memory_structs/src/lib.rs",
+      "start_line": 701,
+      "end_line": 726,
+      "message": "**TryFrom range check**\n\nThe `TryFrom<$TypeName> for $TypeName<Page2MiB>` (and 1GiB) check uses `(size_in_pages() - 1) % 512 == 0`. For a single 4K page range, `size_in_pages()` is 1, so `(1-1)%512 == 0` passes, but the start/end chunk conversions then fail only if unaligned. More importantly, a range of exactly 512 pages starting at an aligned address passes, but a range of 513 pages also passes the modulo check while not being representable as whole 2MiB pages; the check should validate that the range length is a multiple of `CONTAINED_4K` (i.e. `size_in_pages() % 512 == 0`), not `(size-1)`."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 26620
+  }
+}

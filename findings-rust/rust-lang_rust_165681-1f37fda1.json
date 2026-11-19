@@ -1,0 +1,28 @@
+{
+  "pr": {
+    "repo": "https://github.com/rust-lang/rust",
+    "pr_number": 165681,
+    "base": "4de0e38612353dc524009a12ad43f0c05a5f8c6e",
+    "head": "1f37fda1868d8c7ba543a2901fe102224765d205"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "library/core/src/str/pattern.rs",
+      "start_line": 285,
+      "end_line": 291,
+      "message": "**Incorrect Safety Doc**\n\nThe `# Guarantees` section added to `next_reject` (and `next_reject_back`) states \"Matched ranges must be returned in forward order, without revisiting previously consumed portions of the haystack.\" This is copy-pasted from `next_match` and is wrong for reject methods: reject ranges are not \"matched ranges\", and for `next_reject_back` the ranges are returned in reverse order. Since these docs are now the safety contract that unsafe implementers must uphold, an inaccurate guarantee is misleading. The same wording issue appears in `next_match_back`/`next_reject_back` where \"forward order\" is incorrect for back-searching."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "library/core/src/str/pattern.rs",
+      "start_line": 353,
+      "end_line": 357,
+      "message": "**Inaccurate Guarantee Wording**\n\nThe `next_match_back` and `next_reject_back` guarantees say \"Matched ranges must be returned in forward order, without revisiting previously consumed portions of the haystack.\" For back-searching methods, ranges are produced from the end toward the front, so \"forward order\" is incorrect and could mislead implementers of this now-unsafe trait about the required behavior."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 19181
+  }
+}

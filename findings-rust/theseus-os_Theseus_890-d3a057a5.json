@@ -1,0 +1,35 @@
+{
+  "pr": {
+    "repo": "https://github.com/theseus-os/Theseus",
+    "pr_number": 890,
+    "base": "3ad24f66cc6068f50ce068a869f53147fc043a9d",
+    "head": "d3a057a55b3dac763b8aa58450e51d2e88e70d13"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "kernel/multicore_bringup/src/aarch64.rs",
+      "start_line": 49,
+      "end_line": 88,
+      "message": "**Possible Bug**\n\n`ap_data` is a stack-local `ApTrampolineData` whose physical address is passed to `psci::cpu_on`. The AP reads it via `ap_data_phys_addr` after the MMU is enabled, but the BSP only translates the virtual address of `ap_data` and never guarantees that the stack page holding it is identity-mapped or otherwise mapped at that physical address in the AP's page tables. If the BSP stack is not identity-mapped, the AP will fault when dereferencing `ap_data_ptr_in_x0` in `ap_stage_two`. Additionally, `ap_data` is a plain stack variable, so its physical address is only valid while `handle_ap_cores` is on the stack; this is fine here but fragile."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/multicore_bringup/src/aarch64.rs",
+      "start_line": 109,
+      "end_line": 144,
+      "message": "**Possible Bug**\n\nThe `ap_ready` handshake is racy across iterations: `ap_data.ap_ready.write(0)` is set before `cpu_on`, but on the success path the BSP waits for `ap_ready == 1` and then immediately reuses the same `ap_data` for the next core. If a previously started AP has not yet observed the reset (or a stale `1` from a prior core is read), the BSP can proceed before the new AP has actually consumed the stack boundaries, causing the AP to read a stack belonging to a different core. Consider using a per-core data structure or a generation counter."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/multicore_bringup/src/aarch64.rs",
+      "start_line": 91,
+      "end_line": 93,
+      "message": "**Possible Bug**\n\n`ap_entry_point` is copied into the identity-mapped startup page, but the copy uses `PAGE_SIZE` bytes from `ap_entry_point as *const [u8; PAGE_SIZE]`. If the function is shorter than one page, reading `PAGE_SIZE` bytes past the function's end reads out-of-bounds memory (potentially unmapped), which is undefined behavior. The comment says the code must be \"equal to or shorter than one page\", but the copy always reads a full page."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 16507
+  }
+}

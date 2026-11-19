@@ -1,0 +1,35 @@
+{
+  "pr": {
+    "repo": "https://github.com/asterinas/asterinas",
+    "pr_number": 2705,
+    "base": "dbba54b02c618bed1c3f53591b431dc015116437",
+    "head": "3ae423727e2c3595b2962aa6e3556aa6e954d0ad"
+  },
+  "agent": "pr-agent",
+  "findings": [
+    {
+      "producer": "pr-agent",
+      "file": "kernel/src/syscall/rt_sigtimedwait.rs",
+      "start_line": 44,
+      "end_line": 70,
+      "message": "**Possible Bug**\n\nThe `mask` passed to `dequeue_signal` is computed as `!set` (the complement of the requested set), while `with_sigmask_changed` uses `sig_mask & mask` to temporarily block signals. If `dequeue_signal` expects the set of signals to wait for (as the name and the `!set` construction suggest), then passing the complement means it will dequeue signals *not* in the requested set and miss the requested ones. The two usages of `mask` are inconsistent: one treats it as \"signals to block/ignore\" and the other as \"signals to wait for\". This should be verified against `dequeue_signal`'s contract; if it expects the wait set, the fast-path and the pause predicate will return the wrong signal."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/src/syscall/rt_sigtimedwait.rs",
+      "start_line": 71,
+      "end_line": 83,
+      "message": "**Possible Bug**\n\nIn the fast path, `siginfo` is written to `info_ptr` before checking whether the signal is ignored and will be dropped. If the signal is ignored (the `continue` branch), the siginfo for a dropped signal has already been written to user memory, and the loop continues to the next signal. This leaks stale/incorrect siginfo to userspace for signals that are not actually returned. The write should occur only after deciding to return the signal."
+    },
+    {
+      "producer": "pr-agent",
+      "file": "kernel/src/syscall/rt_sigtimedwait.rs",
+      "start_line": 68,
+      "end_line": 94,
+      "message": "**Possible Bug**\n\n`sig_dispositions().lock()` is called and then `sig_dispositions.lock()` is called again on the result. If `sig_dispositions()` already returns a guard (e.g., a `RwMutex` read guard), calling `.lock()` on it is likely a type error or a double-lock. More importantly, the same double-lock pattern appears in the pause predicate, and holding these locks across the `pause_until_or_timeout` wait could deadlock if the signal-delivery path needs the same lock to make a signal pending and wake the waiter. Verify the locking is not held while blocking."
+    }
+  ],
+  "usage": {
+    "time_in_ms": 10502
+  }
+}
