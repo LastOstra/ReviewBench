@@ -53,6 +53,33 @@
         "original_end_line": 248,
         "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
       }
+    },
+    {
+      "file": "kernel/src/fs/path/resolver.rs",
+      "start_line": 310,
+      "end_line": 315,
+      "message": "**Wrong cwd update condition**\n\nThe per-thread cwd update compares `fs_resolver.cwd() == &self.root` instead of comparing against the thread's own root. A thread whose cwd happens to equal the caller's root but whose root is different will have its cwd silently changed, and a thread whose cwd equals the caller's root but whose root differs is mishandled. The condition should compare the thread's cwd against the thread's own root (i.e., `fs_resolver.cwd() == fs_resolver.root()`), matching the documented behavior that only threads whose root and cwd are the same as the caller's are updated.",
+      "tp_fp": "fp",
+      "severity": "medium",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "tp_fp_justification": "--- trae-qwen4-max final review (final verdict) ---\n独立核对 b842e92e 快照 resolver.rs:298-323：循环内对每个同 mnt_ns 线程分别独立检查 fs_resolver.root()==&self.root 则 set_root、fs_resolver.cwd()==&self.root 则 set_cwd（310-315），此时 self.root 仍是旧根（323 行才替换）。这正是 Linux pivot_root(2) 语义：root 与 cwd 各自只要指向旧根就改为 new_root，两者独立判断。finding 建议改为 cwd==线程自身 root 是错误条件：chroot 线程若 cwd 指向旧根按 Linux 语义也应被更新，而按 finding 的条件反而漏更新；finding 所谓'cwd 恰等于调用者 root 但自身 root 不同的线程被静默改 cwd'恰是正确行为。claim 不成立。\n\n--- deepseek-v4.1-flash initial verdict (PR-Agent classifier, non-final) ---\nThe code at resolver.rs:310-315 compares each other thread's cwd against `&self.root`, which is the caller's old root path (it is only replaced with `new_root_path` after the loop). That matches Linux `pivot_root(2)` semantics: \"pivot_root() changes the root directory and the current working directory of each process or thread in the same mount namespace to new_root if they point to the old root directory.\" It also matches the function's own doc comment on resolver.rs:234-237 (\"if their root directory and current working directory are the same as the current thread's root directory, they will also be changed\"). The proposed `fs_resolver.cwd() == fs_resolver.root()` would instead update cwd only when a thread's cwd equals its own root, which is not the required condition and would (a) fail to move a cwd that pointed at the old root and (b) corrupt cwd for unrelated chrooted threads. The claimed mishandling does not exist.",
+      "severity_justification": "If the claimed bug were real, altering another thread's cwd incorrectly in a shared mount namespace could leave processes operating in the wrong directory; that would be a functional correctness issue of moderate impact. The actual code, however, implements the correct Linux behavior.",
+      "category_justification": "The finding alleges incorrect conditional logic for updating other threads' cwd; the claim concerns behavioral correctness.",
+      "producer": "joint:pr-agent+deepseek-v4.1-flash+trae-qwen4-max",
+      "source": {
+        "type": "agent_output",
+        "alignment": "generated",
+        "candidate_id": "fp-018",
+        "session_file": "2026-11-18T08-43-15-948Z_01a1edd3-146c-7a5b-b613-0add68437467.jsonl",
+        "finding_index": "2/3",
+        "judge_model": "qwen4-max",
+        "reviewer": "trae-qwen4-max",
+        "review_decision": "accept",
+        "initial_classifier_model": "deepseek-v4.1-flash"
+      },
+      "difficulty": "easy",
+      "context_required": "diff-only"
     }
   ]
 }

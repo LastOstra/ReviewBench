@@ -72,6 +72,60 @@
         "alignment": "on_chosen_head",
         "original_commit": "ee27c46eccb8880127525082f03ea5a4694bb93d"
       }
+    },
+    {
+      "file": "kernel/pci/src/lib.rs",
+      "start_line": 283,
+      "end_line": 291,
+      "message": "**Possible Bug**\n\n`pci_read_32_addr`/`pci_write_addr` on aarch64 index `PCI_CONFIG_SPACE` with the full `address` computed by `pci_address`, which includes `BASE_OFFSET` (0 on aarch64) plus bus/slot/func/offset. The mapped ECAM region is only `size_bytes` (0x10000000) long, but the address is an absolute physical address (base 0x4010000000) rather than an offset into the mapped slice. Indexing the slice with the absolute address will be out of bounds (panic) or read the wrong location. The address should be rebased by subtracting `BOARD_CONFIG.pci_ecam.base_address` before indexing.",
+      "tp_fp": "fp",
+      "severity": "high",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "tp_fp_justification": "--- trae-qwen4-max final review (final verdict) ---\n独立核对 ee27c46e 快照 pci/src/lib.rs:96-106/262-271：aarch64 BASE_OFFSET=0（0x8000_0000 仅 x86_64 分支），pci_address 返回相对 ECAM 偏移；0x4010000000 是 map_frame_range 的物理基址参数（qemu_virt.rs:43），mapper.rs:221-233 页帧 lockstep 映射使 slice 索引 0 对应物理基址，slice 长 0x10000000 覆盖全 ECAM。finding 声称返回绝对物理地址导致越界，混淆了物理基址与地址计算，不成立。与 golden[0]/[1]（volatile/端口 IO）claim 不同。\n\n--- deepseek-v4.1-flash initial verdict (PR-Agent classifier, non-final) ---\nThe finding claims pci_address() includes the absolute physical base 0x4010000000 on aarch64, causing slice OOB. But BASE_OFFSET is defined as 0 on aarch64, so pci_address returns only (bus<<16)|(slot<<11)|(func<<8)|offset, i.e. an offset into the mapped region. The physical base is used only in map_frame_range() to select frames; map_frame_range maps them to freshly allocated virtual pages, so the BorrowedSliceMappedPages starts at ECAM offset 0. Max address (~0xFF_FFFF) is far below size_bytes 0x10000000, so there is no OOB. The proposed fix (subtract base_address) would be wrong/underflowing.",
+      "severity_justification": "If the claim were true it would break all PCI config-space accesses (panic on every read/write) on aarch64, so severity would be high; it is nonetheless factually incorrect.",
+      "category_justification": "The finding alleges incorrect address computation leading to out-of-bounds access, which is a correctness concern.",
+      "producer": "joint:pr-agent+deepseek-v4.1-flash+trae-qwen4-max",
+      "source": {
+        "type": "agent_output",
+        "alignment": "generated",
+        "candidate_id": "fp-051",
+        "session_file": "2026-11-18T09-53-08-590Z_01a1ee13-0dee-7dce-b1b5-12d766e6e9d5.jsonl",
+        "finding_index": "1/2",
+        "judge_model": "qwen4-max",
+        "reviewer": "trae-qwen4-max",
+        "review_decision": "accept",
+        "initial_classifier_model": "deepseek-v4.1-flash"
+      },
+      "difficulty": "medium",
+      "context_required": "diff-plus-related-files"
+    },
+    {
+      "file": "kernel/pci/src/lib.rs",
+      "start_line": 284,
+      "end_line": 285,
+      "message": "**Possible Bug**\n\nOn aarch64, `pci_read_32_addr`/`pci_write_addr` call `.unwrap()` on the `PCI_CONFIG_SPACE` option. If a read/write happens before `scan_pci` has populated the config space (e.g., any caller of the read/write helpers that doesn't go through `get_pci_buses`), this panics. The x86 path has no such precondition. Consider returning an error or ensuring initialization is guaranteed before these are reachable.",
+      "tp_fp": "fp",
+      "severity": "medium",
+      "category": "reliability",
+      "scope": "introduced-by-pr",
+      "tp_fp_justification": "--- trae-qwen4-max final review (final verdict) ---\n子代理逐字取证+我判定（ee27c46e 快照 pci/src/lib.rs）：两处 unwrap（285/321）位于私有 pci_read_32_addr/pci_write_addr；PciLocation 三字段私有、无公开构造函数，全仓库仅有的两个字面量构造点（182/199）都在 scan_pci 内且位于 aarch64 初始化块（162-173）之后；映射失败两条路径（167 ?、170 return Err）均在构造任何设备前返回；三个公开入口（119/127/144）都经 Once::try_call_once(scan_pci)，crate 外只能 Copy 既有值。故 PCI_CONFIG_SPACE 为 None 时 unwrap 不可达；finding 自己也承认'safe if called only after init'，仅建议文档化。无实际缺陷。\n\n--- deepseek-v4.1-flash initial verdict (PR-Agent classifier, non-final) ---\nThe .unwrap() exists, but the claimed panic path is not reachable. All read/write helpers are private methods on PciLocation, whose fields are private and which is only constructed inside scan_pci. The only public entry points (get_pci_buses/get_pci_device_bsf/pci_device_iter) call scan_pci first; on aarch64 scan_pci initializes PCI_CONFIG_SPACE before its scan loop and returns Err (producing no devices) if mapping fails. Therefore no caller can invoke a read/write before initialization, so the 'unreachable panic' scenario is hypothetical.",
+      "severity_justification": "If the stated scenario were reachable it would cause a kernel panic on aarch64 config-space access, warranting medium-high; it is not reachable in the current API.",
+      "category_justification": "The finding concerns a potential panic/robustness of the config-space access path.",
+      "producer": "joint:pr-agent+deepseek-v4.1-flash+trae-qwen4-max",
+      "source": {
+        "type": "agent_output",
+        "alignment": "generated",
+        "candidate_id": "fp-052",
+        "session_file": "2026-11-18T09-53-08-590Z_01a1ee13-0dee-7dce-b1b5-12d766e6e9d5.jsonl",
+        "finding_index": "2/2",
+        "judge_model": "qwen4-max",
+        "reviewer": "trae-qwen4-max",
+        "review_decision": "accept",
+        "initial_classifier_model": "deepseek-v4.1-flash"
+      },
+      "difficulty": "medium",
+      "context_required": "diff-plus-related-files"
     }
   ]
 }

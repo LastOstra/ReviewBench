@@ -28,6 +28,33 @@
         "alignment": "on_chosen_head",
         "original_commit": "da99c69f85663ca480d1d859ef322e77598f5219"
       }
+    },
+    {
+      "file": "kernel/scheduler/src/lib.rs",
+      "start_line": 64,
+      "end_line": 93,
+      "message": "**Possible Bug**\n\nThe `timer_tick_handler` macro invocation passes `None` as the interrupt number, but the x86_64 macro expansion calls `$crate::eoi($x86_64_interrupt_number)` when the handler returns `CallerMustSignalEoi`. Here the handler returns `HandlerHasSignaledEoi`, so `eoi(None)` is not invoked by the macro; however, the handler body only calls `eoi(...)` inside the `if false` block, meaning the timer EOI is never signaled on x86_64. Previously `lapic_timer_handler` also did not call eoi, so verify the timer interrupt is acknowledged elsewhere; if not, this is a regression.",
+      "tp_fp": "fp",
+      "severity": "high",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "tp_fp_justification": "--- trae-qwen4-max final review (final verdict) ---\n独立核对 theseus da99c69f 快照 scheduler/src/lib.rs:64-93：eoi 调用位于 82-88 行的独立块（x86_64 eoi(None)、aarch64 eoi(CPU_LOCAL_TIMER_IRQ)），在 if false 调试块（69-74 行）之外、schedule() 之前，无条件执行。finding 声称 eoi 在 if false 内导致 timer EOI 永不发送，与代码结构相反。\n\n--- deepseek-v4.1-flash initial verdict (PR-Agent classifier, non-final) ---\nThe finding misreads the code. In `interrupt_handler!(timer_tick_handler, ...)` (kernel/scheduler/src/lib.rs:64-93), the `eoi(...)` call is NOT inside the `if false` debug block. It is in a separate, unconditional-on-x86 block immediately before `schedule()`:\n\n```rust\n{\n    #[cfg(target_arch = \"x86_64\")]\n    eoi(None); // None, because IRQ 0x22 cannot possibly be a PIC interrupt\n    #[cfg(target_arch = \"aarch64\")]\n    eoi(CPU_LOCAL_TIMER_IRQ);\n}\nschedule();\n```\n\nSo the x86_64 timer EOI is signaled exactly as before (the pre-PR `cpu_local_timer_tick_handler()` had the identical block, as the diff shows). There is no regression and no missing EOI. The `None` argument is also intentional (APIC EOI ignores the IRQ; PIC-only code path cannot apply to the LAPIC timer).",
+      "severity_justification": "If the claim were true, a missing timer EOI would stall preemptive scheduling/system interrupts, which is high impact; but the claim is factually incorrect.",
+      "category_justification": "The finding alleges a regression in interrupt acknowledgment (EOI) behavior, a correctness concern.",
+      "producer": "joint:pr-agent+deepseek-v4.1-flash+trae-qwen4-max",
+      "source": {
+        "type": "agent_output",
+        "alignment": "generated",
+        "candidate_id": "fp-063",
+        "session_file": "2026-11-18T10-24-25-484Z_01a1ee2f-b18c-7eb8-b261-4b591985b7ae.jsonl",
+        "finding_index": "1/2",
+        "judge_model": "qwen4-max",
+        "reviewer": "trae-qwen4-max",
+        "review_decision": "accept",
+        "initial_classifier_model": "deepseek-v4.1-flash"
+      },
+      "difficulty": "easy",
+      "context_required": "diff-only"
     }
   ]
 }

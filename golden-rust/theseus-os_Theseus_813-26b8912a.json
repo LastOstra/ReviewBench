@@ -56,6 +56,33 @@
         "original_end_line": 16,
         "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
       }
+    },
+    {
+      "file": "kernel/wait_queue/src/lib.rs",
+      "start_line": 26,
+      "end_line": 46,
+      "message": "**Possible Lost Wakeup**\n\n`wait_until` now pushes the current task into the queue via `push_if_fail` and blocks it inside the condition closure, but the task is never removed from the queue when the condition succeeds. If the condition returns `Some` on the first check (before the task is ever pushed), the task is not enqueued, which is fine; however, if the condition succeeds after the task was pushed and blocked, the task remains in the queue. A later `notify_one` will pop this stale task and call `unblock()` on an already-runnable task, consuming a notification that should have gone to a genuinely waiting task. This can cause a real waiter to never be woken, i.e. a lost wakeup / hang. The old implementation removed the task from the queue atomically when the condition was satisfied.",
+      "tp_fp": "fp",
+      "severity": "medium",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "tp_fp_justification": "--- trae-qwen4-max final review (final verdict) ---\n独立取证证实 finding 的两个核心主张均不成立。(1) 正常唤醒路径不存在『条件在 push+block 之后成功而任务仍留在队列』：push_if_fail（libs/mpmc_queue/src/lib.rs:77-89）持队列锁调用 condition，成功则不入队；失败才入队并 block。任务要再次运行并重新评估条件必须先被 unblock，而此路径上唯一的 unblock 来自 notify_one，它先 self.inner.pop()（lib.rs:147-170 确实移除节点）再 unblock——任务重评条件时已不在队列中，条件成功直接返回、不会再入队。(2) 回归主张『旧实现在条件满足时原子地把任务移出队列』为假：从 judge session 的 diff 原文核实，旧 wait_until 同样是持锁后 if let Some(ret)=condition() { return Ok(ret); } 直接返回、不做移除；contains 检查只防重复入队（伴 spurious wakeup 警告），移除一直由 notify 的 remove/pop_front 完成。新旧在成功路径上行为一致，无回归。与 golden TP（sync_preemption:14-23、libs/sync_irq:14-24 的 DeadlockPrevention trait 设计问题）文件与语义均不同，无同一性。judge 判 FP 正确。\n\n--- deepseek-v4.1-flash initial verdict (PR-Agent classifier, non-final) ---\nThe finding's premise is wrong. `notify_one` calls `self.inner.pop()` (removing the TaskRef from the queue) before `unblock()`, so a task woken normally is removed before the condition can be re-evaluated. The old `wait_until` in the diff also returned on `Some` without removing the task (removal was done by notify), so the claim that the old implementation removed the task atomically on condition success is false, and the described 'condition succeeds after push and block -> remains queued' path does not occur on the normal wake path. A related spurious-wakeup/duplicate-push concern exists, but it is not what this finding describes.",
+      "severity_justification": "If the described lost-wakeup/hang were real it would be serious, but it depends on a spurious-wakeup path the finding does not establish, and the common-path behavior is correct.",
+      "category_justification": "The finding concerns wait/wakeup queue logic and a claimed lost-wakeup bug.",
+      "producer": "joint:pr-agent+deepseek-v4.1-flash+trae-qwen4-max",
+      "source": {
+        "type": "agent_output",
+        "alignment": "generated",
+        "candidate_id": "fp-057",
+        "session_file": "2026-11-18T10-05-04-814Z_01a1ee1d-fbae-74f5-9cc4-9697352bfa5c.jsonl",
+        "finding_index": "1/3",
+        "judge_model": "qwen4-max",
+        "reviewer": "trae-qwen4-max",
+        "review_decision": "accept",
+        "initial_classifier_model": "deepseek-v4.1-flash"
+      },
+      "difficulty": "medium",
+      "context_required": "diff-plus-related-files"
     }
   ]
 }

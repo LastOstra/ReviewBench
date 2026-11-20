@@ -31,6 +31,60 @@
         "original_end_line": 90,
         "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
       }
+    },
+    {
+      "file": "ostd/src/arch/x86/tdx_guest.rs",
+      "start_line": 101,
+      "end_line": 141,
+      "message": "**Possible Bug**\n\nIn `convert_gpa_range`, the `TdxRetry` branch only advances `next_gpa` when the retry GPA differs from `next_gpa`. If the VMM returns a `retry_gpa` that is greater than `next_gpa` but not page-aligned relative to the start, or more importantly, if the VMM returns a retry GPA that is *less* than `next_gpa` but still within `(next_gpa..end_gpa)` — which cannot happen since the range starts at `next_gpa` — the logic is fine. However, the real concern: when `retry_gpa != next_gpa`, `next_gpa` is set to `retry_gpa` and the loop re-issues `map_gpa` with `remaining_size = end_gpa - next_gpa`. This is correct only if all pages before `retry_gpa` were already successfully converted. The TDX spec's `TdxRetry` semantics return the GPA at which the operation should be retried, and pages before it are considered done, so this is likely correct. Lower confidence; flagging only for verification.",
+      "tp_fp": "fp",
+      "severity": "low",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "tp_fp_justification": "--- trae-qwen4-max final review (final verdict) ---\n独立核对 8cfed512 快照 tdx_guest.rs:101-141：TdxRetry 分支先校验 retry_gpa ∈ [next_gpa,end_gpa) 且页对齐（108-116），越界/非对齐直接报错返回；retry_gpa==next_gpa 时同页重试上限 3 次（118-126）；retry_gpa>next_gpa 时推进 next_gpa 并清零 retry_count（127-130），随后以 end_gpa-next_gpa 重发 map_gpa。按 TDX MapGPA 的 TDX_RETRY 语义，返回 GPA 即重试起点、其前页面视为已转换，推进正确；next_gpa 严格递增+每页重试上限保证循环终止。finding 自结 'likely correct; flagging only for verification'，未给出任何反例，属求证请求而非缺陷指控。\n\n--- deepseek-v4.1-flash initial verdict (PR-Agent classifier, non-final) ---\nThe finding explicitly concludes that the logic is correct (\"this is likely correct... Lower confidence; flagging only for verification\") and identifies no concrete defect. I verified the loop at ostd/src/arch/x86/tdx_guest.rs:101-141: `!(next_gpa..end_gpa).contains(&retry_gpa)` already rejects any retry GPA below `next_gpa` or outside the range, and `remaining_size = end_gpa - next_gpa` can never underflow because `next_gpa` only advances to a value strictly inside the range. There is no actionable issue — only a request to confirm TDX `TdxRetry` semantics, which the finding itself says are likely satisfied.",
+      "severity_justification": "No defect is asserted; the finding is a verification note about code the author says is likely correct, so it carries no practical impact.",
+      "category_justification": "The finding concerns the semantics of the retry loop (advancing `next_gpa` and recomputing `remaining_size`), which is a correctness topic, even though no bug is demonstrated.",
+      "producer": "joint:pr-agent+deepseek-v4.1-flash+trae-qwen4-max",
+      "source": {
+        "type": "agent_output",
+        "alignment": "generated",
+        "candidate_id": "fp-025",
+        "session_file": "2026-11-18T09-05-57-657Z_01a1ede7-db99-7b5f-b85f-4a6dd2476e51.jsonl",
+        "finding_index": "1/2",
+        "judge_model": "qwen4-max",
+        "reviewer": "trae-qwen4-max",
+        "review_decision": "accept",
+        "initial_classifier_model": "deepseek-v4.1-flash"
+      },
+      "difficulty": "medium",
+      "context_required": "diff-plus-related-files"
+    },
+    {
+      "file": "ostd/src/mm/dma/util.rs",
+      "start_line": 304,
+      "end_line": 327,
+      "message": "**Possible Bug**\n\n`panic_page_convert_error` is gated behind `#[cfg(all(target_arch = \"x86_64\", any(debug_assertions, feature = \"cvm_guest\")))]`, but it is called unconditionally inside `if_tdx_enabled!` blocks in both `alloc_unprotect_physical_range` and `dealloc_protect_physical_range`. If `if_tdx_enabled!` expands to code that is compiled on x86_64 without `debug_assertions` and without the `cvm_guest` feature, the call to `panic_page_convert_error` will fail to compile because the function is not defined. This depends on how `if_tdx_enabled!` is implemented; if it always compiles the inner block on x86_64, this is a build break in release builds without `cvm_guest`.",
+      "tp_fp": "fp",
+      "severity": "low",
+      "category": "reliability",
+      "scope": "introduced-by-pr",
+      "tp_fp_justification": "--- trae-qwen4-max final review (final verdict) ---\n独立核对 8cfed512 快照：if_tdx_enabled! 宏定义（ostd/src/arch/x86/mod.rs:231-256）把 $if_block 置于 #[cfg(feature=\"cvm_guest\")] 块内，未启用 cvm_guest 时只编译 $else_block（无 else 形式则什么都不编译）。两处调用点（dma/util.rs:202-219 alloc_unprotect、239-252 dealloc_protect）均在宏 if 块内且外层另有 #[cfg(target_arch=\"x86_64\")]。故 x86_64 release 无 cvm_guest 时调用点根本不参与编译，panic_page_convert_error 的 cfg(all(x86_64, any(debug_assertions, cvm_guest))) 门（util.rs:304）在调用点存在的任何配置下都满足。finding 的条件前提'若宏在 x86_64 上总是编译内块'被宏定义直接证伪，所谓编译破坏不存在。\n\n--- deepseek-v4.1-flash initial verdict (PR-Agent classifier, non-final) ---\nThe finding's claimed failure path is verifiably impossible. I checked `if_tdx_enabled!` at ostd/src/arch/x86/mod.rs:231-256: the inner `$if_block` is wrapped in `#[cfg(feature = \"cvm_guest\")]` (and the no-else form compiles to nothing otherwise), so the calls to `panic_page_convert_error` in `alloc_unprotect_physical_range`/`dealloc_protect_physical_range` are cfg'd out whenever `cvm_guest` is off. Moreover, in a release build without `cvm_guest` the enclosing functions themselves are not compiled at all, since they are gated on `any(debug_assertions, all(target_arch = \"x86_64\", feature = \"cvm_guest\"))` (ostd/src/mm/dma/util.rs:191, 233). Thus the described build break — \"the call ... will fail to compile because the function is not defined\" in release builds without `cvm_guest` — does not occur. (There is a different, opposite cfg nit: the helper's own body references `crate::arch::tdx_guest`, whose module is `#[cfg(feature = \"cvm_guest\")]`, so a *debug* build without `cvm_guest` on x86_64 could fail on the definition — but that is not what this finding claims, and no CI workflow or default build exercises that configuration.)",
+      "severity_justification": "Even if it were accurate, this would be a build-configuration concern for a non-default feature combination; as written the claimed break cannot occur, so it has no practical impact.",
+      "category_justification": "The finding is about conditional compilation/build configuration (feature-gated helper vs. call sites), which falls under build/reliability concerns rather than runtime logic.",
+      "producer": "joint:pr-agent+deepseek-v4.1-flash+trae-qwen4-max",
+      "source": {
+        "type": "agent_output",
+        "alignment": "generated",
+        "candidate_id": "fp-026",
+        "session_file": "2026-11-18T09-05-57-657Z_01a1ede7-db99-7b5f-b85f-4a6dd2476e51.jsonl",
+        "finding_index": "2/2",
+        "judge_model": "qwen4-max",
+        "reviewer": "trae-qwen4-max",
+        "review_decision": "accept",
+        "initial_classifier_model": "deepseek-v4.1-flash"
+      },
+      "difficulty": "medium",
+      "context_required": "diff-plus-related-files"
     }
   ]
 }

@@ -56,6 +56,60 @@
         "original_end_line": 108,
         "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
       }
+    },
+    {
+      "file": "kernel/multicore_bringup/src/aarch64.rs",
+      "start_line": 49,
+      "end_line": 88,
+      "message": "**Possible Bug**\n\n`ap_data` is a stack-local `ApTrampolineData` whose physical address is passed to `psci::cpu_on`. The AP reads it via `ap_data_phys_addr` after the MMU is enabled, but the BSP only translates the virtual address of `ap_data` and never guarantees that the stack page holding it is identity-mapped or otherwise mapped at that physical address in the AP's page tables. If the BSP stack is not identity-mapped, the AP will fault when dereferencing `ap_data_ptr_in_x0` in `ap_stage_two`. Additionally, `ap_data` is a plain stack variable, so its physical address is only valid while `handle_ap_cores` is on the stack; this is fine here but fragile.",
+      "tp_fp": "fp",
+      "severity": "high",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "tp_fp_justification": "--- trae-qwen4-max final review (final verdict) ---\n独立核对 d3a057a5 快照 aarch64.rs:175-199 汇编：四次对 ap_data 的读取（[x0,0]/[x0,5*8]/[x0,2*8]/[x0,3*8]）全部在 asm_set_mmu_config_x2_x3 开 MMU 之前、x0 仍为物理地址时完成；第 187 行 ldr x0,[x0,3*8] 把 x0 覆写为 ap_data_virt_addr，随后 br x1 进入 ap_stage_two（208-214 行）按虚拟地址访问。finding 声称开 MMU 后仍按物理地址读栈上 ap_data，与指令顺序相反。\n\n--- deepseek-v4.1-flash initial verdict (PR-Agent classifier, non-final) ---\nThe finding claims the AP reads ap_data via ap_data_phys_addr after the MMU is enabled. Tracing ap_entry_point shows x0 is overwritten with ap_data_virt_addr (`ldr x0, [x0, 3*8]`) before asm_set_mmu_config_x2_x3! runs and before `br x1`; ap_stage_two therefore receives the virtual address, which is the BSP kernel-stack address mapped in the shared kernel page table (same TTBR0 copied to the AP). No identity mapping of the stack is needed, and the lifetime concern is acknowledged as fine because the BSP waits for ap_ready==1.",
+      "severity_justification": "If the claim were true, dereferencing an unmapped pointer in ap_stage_two would fault on the AP and break multicore bring-up; that is a boot-failure-class impact, though the claim is actually incorrect.",
+      "category_justification": "The alleged issue is a potential memory-mapping fault / invalid pointer use during AP bring-up.",
+      "producer": "joint:pr-agent+deepseek-v4.1-flash+trae-qwen4-max",
+      "source": {
+        "type": "agent_output",
+        "alignment": "generated",
+        "candidate_id": "fp-059",
+        "session_file": "2026-11-18T10-14-05-553Z_01a1ee26-3bf1-7a6e-b3dd-80bb3f3b31f1.jsonl",
+        "finding_index": "1/3",
+        "judge_model": "qwen4-max",
+        "reviewer": "trae-qwen4-max",
+        "review_decision": "accept",
+        "initial_classifier_model": "deepseek-v4.1-flash"
+      },
+      "difficulty": "medium",
+      "context_required": "diff-plus-related-files"
+    },
+    {
+      "file": "kernel/multicore_bringup/src/aarch64.rs",
+      "start_line": 109,
+      "end_line": 144,
+      "message": "**Possible Bug**\n\nThe `ap_ready` handshake is racy across iterations: `ap_data.ap_ready.write(0)` is set before `cpu_on`, but on the success path the BSP waits for `ap_ready == 1` and then immediately reuses the same `ap_data` for the next core. If a previously started AP has not yet observed the reset (or a stale `1` from a prior core is read), the BSP can proceed before the new AP has actually consumed the stack boundaries, causing the AP to read a stack belonging to a different core. Consider using a per-core data structure or a generation counter.",
+      "tp_fp": "fp",
+      "severity": "high",
+      "category": "reliability",
+      "scope": "introduced-by-pr",
+      "tp_fp_justification": "--- trae-qwen4-max final review (final verdict) ---\n独立核对 d3a057a5 快照：BSP 每迭代先 ap_ready.write(0)（109 行）再 cpu_on（117 行）再等 1（144 行）；AP 侧仅在 ap_stage_two 读尽栈边界后写 1（210-212 行），全仓 ap_ready 只有这 3 个访问点，AP 从不读该字段；写完 1 后进入 kstart_ap→aarch64 loop{}（ap_start:67-70），不再触碰 ap_data。前一 AP 不可能在 BSP 清 0 后再写 1，finding 的跨迭代 stale-1 竞态被协议顺序排除。\n\n--- deepseek-v4.1-flash initial verdict (PR-Agent classifier, non-final) ---\nThe described race is not present. APs never read ap_ready; they only write 1 once in ap_stage_two, after loading both stack bounds into locals. The BSP writes ap_ready=0 in program order before cpu_on and blocks until 1, so it cannot observe a stale 1 from a prior core or proceed before the current AP consumed the stack bounds. Previous APs are already past ap_entry_point/ap_stage_two and are looping in kstart_ap, so they no longer touch ap_data.",
+      "severity_justification": "If the claimed race were real, an AP could use another core's stack, corrupting kernel state and crashing the system; thus the claimed impact is high, even though the claim itself is incorrect.",
+      "category_justification": "The finding alleges a concurrency/synchronization race in the cross-core handshake.",
+      "producer": "joint:pr-agent+deepseek-v4.1-flash+trae-qwen4-max",
+      "source": {
+        "type": "agent_output",
+        "alignment": "generated",
+        "candidate_id": "fp-060",
+        "session_file": "2026-11-18T10-14-05-553Z_01a1ee26-3bf1-7a6e-b3dd-80bb3f3b31f1.jsonl",
+        "finding_index": "2/3",
+        "judge_model": "qwen4-max",
+        "reviewer": "trae-qwen4-max",
+        "review_decision": "accept",
+        "initial_classifier_model": "deepseek-v4.1-flash"
+      },
+      "difficulty": "medium",
+      "context_required": "diff-plus-related-files"
     }
   ]
 }

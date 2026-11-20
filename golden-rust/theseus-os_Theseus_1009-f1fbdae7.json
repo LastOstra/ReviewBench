@@ -31,6 +31,33 @@
         "original_end_line": 169,
         "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
       }
+    },
+    {
+      "file": "kernel/net/src/lib.rs",
+      "start_line": 72,
+      "end_line": 82,
+      "message": "**RNG init per call**\n\n`get_ephemeral_port` calls `random::init_rng::<rand_chacha::ChaChaRng>().unwrap()` on every invocation. Re-initializing the RNG each call is wasteful and, depending on `init_rng` semantics, may reseed from a low-entropy source, producing repeated/colliding ports. The `unwrap()` also panics if initialization fails. Consider initializing the RNG once and reusing it.",
+      "tp_fp": "fp",
+      "severity": "low",
+      "category": "performance",
+      "scope": "introduced-by-pr",
+      "tp_fp_justification": "--- trae-qwen4-max final review (final verdict) ---\n独立核对 f1fbdae7 快照：random/src/lib.rs:146-152 init_rng::<T>() 锁住全局 lazy_static CSPRNG（43-48，ChaCha20Rng 经 RDSEED/RDRAND/TSC 一次性播种）并 T::from_rng(&mut *csprng) 返回一个由共享 CSPRNG 派生新种子的 T。故 get_ephemeral_port（net lib.rs:81）每次调用 init_rng 并非'重新播种/重置'，而是从持续前进的共享 CSPRNG 抽取不同种子，各 ChaChaRng 实例种子互异，不会重复/可预测。finding 核心后果不成立，其自身也承认'current code may be functionally correct'，剩余仅线程局部复用的性能/风格建议。\n\n--- deepseek-v4.1-flash initial verdict (PR-Agent classifier, non-final) ---\nVerified random::init_rng seeds from the persistent global CSPRNG (an advanced ChaCha20Rng), so there is no low-entropy reseed or repeated/colliding-port risk; ChaChaRng::from_rng cannot error, so unwrap() will not panic in practice; and the function is called only once per download, making the extra RNG construction negligible. The suggested reuse is a sub-threshold micro-optimization and the finding's main stated risks are incorrect.",
+      "severity_justification": "Even if the RNG were initialized once, the impact is a tiny amount of work on an infrequently called function; no functional or security consequence.",
+      "category_justification": "The finding is fundamentally about the cost of re-initializing an RNG on each call.",
+      "producer": "joint:pr-agent+deepseek-v4.1-flash+trae-qwen4-max",
+      "source": {
+        "type": "agent_output",
+        "alignment": "generated",
+        "candidate_id": "fp-047",
+        "session_file": "2026-11-18T09-39-35-842Z_01a1ee06-a722-72a9-8aeb-f2e52268b617.jsonl",
+        "finding_index": "3/3",
+        "judge_model": "qwen4-max",
+        "reviewer": "trae-qwen4-max",
+        "review_decision": "accept",
+        "initial_classifier_model": "deepseek-v4.1-flash"
+      },
+      "difficulty": "easy",
+      "context_required": "diff-plus-related-files"
     }
   ]
 }

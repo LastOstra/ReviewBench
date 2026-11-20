@@ -72,6 +72,60 @@
         "alignment": "on_chosen_head",
         "original_commit": "fb17077d1e3ff61f192e7d7eec923c2e4629cd66"
       }
+    },
+    {
+      "file": "library/core/src/fmt/num.rs",
+      "start_line": 361,
+      "end_line": 367,
+      "message": "**Possible Bug**\n\nIn the signed `format_into` (macro-generated), when `self < 0`, `offset -= 1` is performed and `buf.buf[offset].write(b'-')` is called. If `self` is `MIN` and the buffer is exactly sized, the offset could underflow. More concretely, for `i128::MIN` the `_fmt_inner` writes 39 digits; with `NumBuffer` capacity 40 there is room for the sign, but the `optimize_for_size` path uses `_inner_slow_integer_to_str` whose returned offset semantics must be consistent. Confirm the offset arithmetic cannot underflow for `MIN` values across all integer types.",
+      "tp_fp": "fp",
+      "severity": "medium",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "tp_fp_justification": "--- trae-qwen4-max final review (final verdict) ---\n独立核对 fb17077d 快照：num_buffer.rs:41/52 NumBuffer.buf 固定 [MaybeUninit<u8>;40]；宏生成 signed format_into 仅覆盖 i8/i16/i32/i64/isize（impl_Display 调用清单 627-651 行），unsigned_abs 至多 19 位（i64::MIN），_fmt_inner 从 buf.len()=40 递减（num.rs:262-264），返回 offset≥21，offset-=1 不可能下溢；optimize_for_size 路径同一 40 字节缓冲同理。i128 独立实现（836-858 行）先 offset+=diff 再 -=1，MIN 需 39 位+符号=40 恰容纳。finding 未给出任何可下溢实例，'could underflow' 为无根据推测。judge 提到的 optimize_for_size 拼写编译问题是另一回事，不属本 claim。\n\n--- deepseek-v4.1-flash initial verdict (PR-Agent classifier, non-final) ---\nThe buffer is always 40 bytes today, and the widest macro-generated signed type (i64/isize) has at most 19 digits, so `_fmt_inner` returns an offset >= 21 and `offset -= 1` cannot underflow. The optimize_for_size helper likewise returns an offset relative to the same 40-byte buffer. i128::MIN is handled in its own impl, where `offset += diff` makes the offset >= 1 before the sign adjustment (39 digits + '-' fit in 40 bytes). The finding names no input that actually underflows; its 'could underflow' claim is incorrect for this code.",
+      "severity_justification": "If the claimed underflow were real it would panic/corrupt output for MIN values in the new unstable API, but no reachable underflow exists.",
+      "category_justification": "The finding alleges a potential arithmetic underflow/panic in the signed format_into implementation.",
+      "producer": "joint:pr-agent+deepseek-v4.1-flash+trae-qwen4-max",
+      "source": {
+        "type": "agent_output",
+        "alignment": "generated",
+        "candidate_id": "fp-040",
+        "session_file": "2026-11-18T09-28-38-509Z_01a1edfc-9f6d-702b-97a7-c41a1329b909.jsonl",
+        "finding_index": "2/2",
+        "judge_model": "qwen4-max",
+        "reviewer": "trae-qwen4-max",
+        "review_decision": "accept",
+        "initial_classifier_model": "deepseek-v4.1-flash"
+      },
+      "difficulty": "medium",
+      "context_required": "diff-plus-related-files"
+    },
+    {
+      "file": "library/core/src/fmt/num.rs",
+      "start_line": 803,
+      "end_line": 812,
+      "message": "**Possible Bug**\n\n`u128::format_into` computes `diff = buf.capacity() - U128_MAX_DEC_N` and then calls `self._fmt(...)` on the sub-slice starting at `diff`. `_fmt` returns a `&str` borrowed from that sub-slice, which is then returned directly. However, the returned `&str` is not offset-adjusted and, more importantly, the `diff` offset is never added back, so the returned slice is relative to the sub-slice rather than the full buffer. This is inconsistent with the `i128` implementation which adds `diff` back to the offset. The result is that for `u128` the returned `&str` may not correspond to the intended buffer region (and the comment about \"add 1 to the returned offset\" is not implemented). Verify the returned string is correct for all inputs.",
+      "tp_fp": "fp",
+      "severity": "medium",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "tp_fp_justification": "--- trae-qwen4-max final review (final verdict) ---\n独立核对 fb17077d 快照 num.rs:255-260：_fmt 返回 &'a str（_fmt_inner 得 usize offset 后经 slice_buffer_to_str(buf,offset) 转换），非 usize。u128::format_into（803-812）传入 buf.buf[diff..]（39 字节）子切片终于 40 字节缓冲末尾，返回 &str 即 buf.buf[diff+offset..40]，绝对区域正确，无数值 offset 可'加回'。i128（843-847）直接调 _fmt_inner 得相对子切片的 usize 故须 offset+=diff，不对称为刻意且正确。808-809 行 'add 1 to the returned offset' 注释陈旧但代码功能正确。finding 核心断言'返回串错位'与代码事实相反。\n\n--- deepseek-v4.1-flash initial verdict (PR-Agent classifier, non-final) ---\nu128::format_into delegates to `_fmt`, which already converts the internal offset into a `&str` via `slice_buffer_to_str` on the same 39-byte sub-slice passed to it. Since that sub-slice ends at the end of the full 40-byte buffer, the returned `&str` points at the correct absolute bytes; there is no offset to add back. The `i128` implementation adds `diff` only because it calls `_fmt_inner` directly and gets a numeric offset, so the asymmetry is correct. Only the stale 'add 1' comment is inaccurate, not the string result.",
+      "severity_justification": "If the claim were true, the new unstable `u128::format_into` would return corrupted strings for many values; however it is a false alarm about newly added unstable API code.",
+      "category_justification": "The finding claims the returned formatted string may be wrong/misaligned for u128.",
+      "producer": "joint:pr-agent+deepseek-v4.1-flash+trae-qwen4-max",
+      "source": {
+        "type": "agent_output",
+        "alignment": "generated",
+        "candidate_id": "fp-041",
+        "session_file": "2026-11-18T09-28-38-509Z_01a1edfc-9f6d-702b-97a7-c41a1329b909.jsonl",
+        "finding_index": "1/2",
+        "judge_model": "qwen4-max",
+        "reviewer": "trae-qwen4-max",
+        "review_decision": "accept",
+        "initial_classifier_model": "deepseek-v4.1-flash"
+      },
+      "difficulty": "medium",
+      "context_required": "diff-plus-related-files"
     }
   ]
 }

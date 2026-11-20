@@ -53,6 +53,33 @@
         "alignment": "on_chosen_head",
         "original_commit": "d5569147cb121ba367c104bc6b7a5fbf291efc06"
       }
+    },
+    {
+      "file": "kernel/src/process/exit.rs",
+      "start_line": 75,
+      "end_line": 92,
+      "message": "**Possible Deadlock**\n\n`copy_process_children` acquires `reaper_process.children()` lock and then, inside the loop, locks each `child_process.parent`. Meanwhile `find_reaper_process` locks `parent` and then reads `process.parent()`. If two processes exit concurrently and each is the other's reaper candidate, lock ordering on `children` vs `parent` can deadlock. Also, `find_reaper_process` walks `parent` locks while `copy_process_children` holds `children` locks, which is a lock-order inversion risk. Confidence is limited but impact (kernel hang) is high.",
+      "tp_fp": "fp",
+      "severity": "high",
+      "category": "reliability",
+      "scope": "introduced-by-pr",
+      "tp_fp_justification": "--- trae-qwen4-max final review (final verdict) ---\n独立核对 d5569147 快照：find_reaper_process（exit.rs:49-70）的 parent().lock().process() 是语句内临时 guard，克隆 Weak 后即释放，不跨语句持 parent 锁；copy_process_children（75-92）锁序 reaper.children→current.children→child.parent，parent guard 内仅调 set_process（只写 Weak+AtomicPid）。全仓库 children() 调用点（exit/wait/clone/prctl）均无'持 ParentProcessGuard 期间再锁 children'的路径。finding 声称的 parent→children 反向持锁路径不存在，AB-BA 死锁前提不成立。\n\n--- deepseek-v4.1-flash initial verdict (PR-Agent classifier, non-final) ---\nNo lock-order cycle exists. `ParentProcess` (parent.lock()) is only used as a temporary within one expression in find_reaper_process/send_child_death_signal/is_init_process, or held in set_process which only stores the cached PID/Weak; no code acquires a `children` mutex while holding a `ParentProcess` mutex, so there is no parent→children inversion. copy_process_children takes the ancestor reaper's children lock before the exiting process's children lock (consistent ancestor→descendant ordering); a cycle would require two processes to be each other's reaper, i.e. mutual ancestry, which is impossible in a process tree. The claimed concurrent 'each other's reaper candidate' scenario is therefore not real.",
+      "severity_justification": "If it were real, a kernel deadlock/hang would be high impact; but the claim is incorrect, so this is a high-severity false positive.",
+      "category_justification": "The finding alleges a concurrency deadlock/kernel hang in the process-exit path.",
+      "producer": "joint:pr-agent+deepseek-v4.1-flash+trae-qwen4-max",
+      "source": {
+        "type": "agent_output",
+        "alignment": "generated",
+        "candidate_id": "fp-003",
+        "session_file": "2026-11-18T08-20-37-991Z_01a1edbe-5be7-7610-9606-24b50f044bce.jsonl",
+        "finding_index": "1/1",
+        "judge_model": "qwen4-max",
+        "reviewer": "trae-qwen4-max",
+        "review_decision": "accept",
+        "initial_classifier_model": "deepseek-v4.1-flash"
+      },
+      "difficulty": "hard",
+      "context_required": "diff-plus-related-files"
     }
   ]
 }

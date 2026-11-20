@@ -28,6 +28,60 @@
         "alignment": "on_chosen_head",
         "original_commit": "e6e53c5204e54a4dfb7945eedcddefef3200ce56"
       }
+    },
+    {
+      "file": "ostd/src/mm/page_table/mod.rs",
+      "start_line": 96,
+      "end_line": 102,
+      "message": "**Possible Bug**\n\n`clear_user_space` only clears the first half of the root page table entries (`0..NR_PTES_PER_NODE / 2`). This assumes the user space always maps to exactly the lower half of the address space. If the user/kernel split is not exactly at the midpoint of the root node's entries (e.g., a different `MAX_USERSPACE_VADDR` or paging configuration), some user mappings would remain, or kernel mappings could be cleared. The loop bound should be derived from the actual user-space address range rather than a hardcoded half.",
+      "tp_fp": "fp",
+      "severity": "low",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "tp_fp_justification": "--- trae-qwen4-max final review (final verdict) ---\n独立核对 e6e53c52 快照：mm/mod.rs:100 MAX_USERSPACE_VADDR=0x0000_8000_0000_0000-PAGE_SIZE，用户 VA 恰占根 PTE 下半（4 级分页每根项覆盖 2^39，2^47/2^39=256=512/2）。page_table/mod.rs:117 create_user_page_table 只复制 NR_PTES_PER_NODE/2..NR_PTES_PER_NODE（内核半），:139 make_shared_tables 断言 start>=half——对半分是该文件既定不变量，clear_user_space(96-102) 清 0..half 与之一致。finding 的'若 split 不在中点'假设在本代码库不成立，当前配置下不可能残留用户映射或误清内核映射，属通用防御性建议而非缺陷。\n\n--- deepseek-v4.1-flash initial verdict (PR-Agent classifier, non-final) ---\nThe lower-half split is correct and is an established invariant: MAX_USERSPACE_VADDR (0x8000_0000_0000 - PAGE_SIZE) makes user VAs exactly root indices 0..256, and create_user_page_table/make_shared_tables use the identical NR_PTES_PER_NODE/2 boundary (including a debug_assert(start >= NR_PTES_PER_NODE/2)). Clearing 0..half can neither leave user mappings (user space never extends past the midpoint) nor clear kernel mappings (upper half untouched). The concern is hypothetical, not a concrete issue.",
+      "severity_justification": "Even if considered, this is a defensive/robustness suggestion; it has no behavioral impact under the actual paging configuration and the current code is consistent with the file's conventions.",
+      "category_justification": "The finding asserts a potential logic error in the loop bound; it is evaluated as a correctness claim and found not to hold.",
+      "producer": "joint:pr-agent+deepseek-v4.1-flash+trae-qwen4-max",
+      "source": {
+        "type": "agent_output",
+        "alignment": "generated",
+        "candidate_id": "fp-001",
+        "session_file": "2026-11-18T08-14-14-955Z_01a1edb8-83ab-7348-a09e-80f63c603394.jsonl",
+        "finding_index": "1/2",
+        "judge_model": "qwen4-max",
+        "reviewer": "trae-qwen4-max",
+        "review_decision": "accept",
+        "initial_classifier_model": "deepseek-v4.1-flash"
+      },
+      "difficulty": "medium",
+      "context_required": "diff-plus-related-files"
+    },
+    {
+      "file": "ostd/src/mm/vm_space.rs",
+      "start_line": 138,
+      "end_line": 143,
+      "message": "**TLB Flush Scope**\n\n`clear_user_space` issues a TLB flush only on the current CPU (`issue_tlb_flush` + `dispatch_tlb_flush`). If the VMAR is shared across CPUs (e.g., another thread on a different CPU is running with this page table active), stale TLB entries for the cleared user mappings may persist on those CPUs, allowing access to freed/unmapped memory. Confirm whether the caller guarantees no other CPU is using this address space, or use a cross-CPU TLB shootdown.",
+      "tp_fp": "fp",
+      "severity": "high",
+      "category": "security",
+      "scope": "introduced-by-pr",
+      "tp_fp_justification": "--- trae-qwen4-max final review (final verdict) ---\n独立核对 e6e53c52 快照（子代理逐字取证+我复核）：vm_space.rs:90-111 cursor_mut 在 activation_lock.read() 下遍历 0..num_cpus() 扫描 ACTIVATED_VM_SPACE 构造 target CpuSet；tlb.rs dispatch_tlb_flush 在 need_remote_flush 时调用 smp::inter_processor_call(&target_cpus, do_remote_flush)，issue_tlb_flush_ 慢路径向每个目标 CPU 的 FLUSH_OPS 入队。finding 声称'只在当前 CPU flush、需补跨 CPU shootdown'的前提与代码相反——shootdown 已实现。judge 提到的真实时序隐患（页在异步远端 flush 完成前被释放）不是本 finding 的 claim，不属同一条。\n\n--- deepseek-v4.1-flash initial verdict (PR-Agent classifier, non-final) ---\nThe finding claims clear_user_space flushes only the current CPU. In fact cursor_mut builds the CpuSet of all CPUs where the VmSpace is activated (scanning ACTIVATED_VM_SPACE for 0..num_cpus under activation_lock), and TlbFlusher::dispatch_tlb_flush calls smp::inter_processor_call on exactly those CPUs to run do_remote_flush. The cross-CPU TLB shootdown the finding asks for is already implemented, so its premise and suggested fix are incorrect. The genuine ordering hazard (pages freed before the asynchronous remote flush completes) is not what this finding describes.",
+      "severity_justification": "If the claim were true, stale TLB entries on other CPUs allowing access to freed/unmapped memory would be a serious security issue; that is the impact level of the described (but incorrect) issue.",
+      "category_justification": "The finding is framed as a stale-TLB/UAF exposure that could allow access to freed memory on other CPUs.",
+      "producer": "joint:pr-agent+deepseek-v4.1-flash+trae-qwen4-max",
+      "source": {
+        "type": "agent_output",
+        "alignment": "generated",
+        "candidate_id": "fp-002",
+        "session_file": "2026-11-18T08-14-14-955Z_01a1edb8-83ab-7348-a09e-80f63c603394.jsonl",
+        "finding_index": "2/2",
+        "judge_model": "qwen4-max",
+        "reviewer": "trae-qwen4-max",
+        "review_decision": "accept",
+        "initial_classifier_model": "deepseek-v4.1-flash"
+      },
+      "difficulty": "medium",
+      "context_required": "diff-plus-related-files"
     }
   ]
 }

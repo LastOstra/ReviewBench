@@ -31,6 +31,33 @@
         "original_end_line": 93,
         "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
       }
+    },
+    {
+      "file": "kernel/src/fs/configfs/test.rs",
+      "start_line": 190,
+      "end_line": 201,
+      "message": "**Test isolation**\n\n`init_usb_gadget_subsystem` guards on `USB_GADGET_SUBSYSTEM.is_completed()` but the check-then-act is racy, and `super::register_subsystem` panics if the same subsystem name is registered twice. If the ktest harness runs tests concurrently or re-enters, this can panic. Also `register_subsystem` requires the singleton to already exist; here it is created via `init_for_ktest`, so ordering is fine, but the non-atomic guard is fragile.",
+      "tp_fp": "fp",
+      "severity": "low",
+      "category": "testing",
+      "scope": "introduced-by-pr",
+      "tp_fp_justification": "--- trae-qwen4-max final review (final verdict) ---\n独立核对 eed12263 快照（本条 judge 无取证，由我独立完成）：osdk/deps/test-kernel/src/lib.rs:35-53 main 只 spawn 一个测试任务；run_ktests(89-121)→run_crate_ktests(123-164) 以 crate/module/test 三重 for 循环逐个同步执行 test.run，无任何并发 spawn。configfs/test.rs:190-201 的 is_completed() check-then-act 在单线程串行 harness 下不可能竞态或重入；mod.rs:39-46 register_subsystem 的重名 panic 因此不可达。finding 前提'若 harness 并发运行或重入'被 runner 实现直接证伪。\n\n--- deepseek-v4.1-flash initial verdict (PR-Agent classifier, non-final) ---\nThe claimed race cannot occur in this project's ktest harness. `osdk/deps/test-kernel/src/lib.rs` spawns a single task that runs `run_ktests`, which iterates crates/modules/tests with a plain sequential `for` loop, and `ostd/libs/ostd-test/src/lib.rs::KtestItem::run` synchronously invokes the test function via `catch_unwind_impl(self.fn_)` — no parallelism or concurrent invocation. There is also exactly one `#[ktest]` (`test_config_fs`) that calls `init_usb_gadget_subsystem`. Sequential repeat calls are already handled by the `is_completed()` early return, and 're-entry' during the first call is impossible in this single-threaded flow. The concern is therefore hypothetical ('If the ktest harness runs tests concurrently'), not a real defect in this codebase.",
+      "severity_justification": "Even if the hypothesized race were reachable, the impact would be limited to a test-only setup panic; there is no production code impact.",
+      "category_justification": "The finding concerns test isolation and initialization in the ktest module, not production behavior.",
+      "producer": "joint:pr-agent+deepseek-v4.1-flash+trae-qwen4-max",
+      "source": {
+        "type": "agent_output",
+        "alignment": "generated",
+        "candidate_id": "fp-007",
+        "session_file": "2026-11-18T08-30-18-611Z_01a1edc7-37f3-7de7-852e-e04905169b7b.jsonl",
+        "finding_index": "2/2",
+        "judge_model": "qwen4-max",
+        "reviewer": "trae-qwen4-max",
+        "review_decision": "accept",
+        "initial_classifier_model": "deepseek-v4.1-flash"
+      },
+      "difficulty": "easy",
+      "context_required": "broader-project-context"
     }
   ]
 }

@@ -31,6 +31,87 @@
         "original_end_line": 56,
         "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
       }
+    },
+    {
+      "file": "kernel/src/fs/rootfs.rs",
+      "start_line": 33,
+      "end_line": 34,
+      "message": "**Possible Bug**\n\n`init_in_first_kthread` now reads `boot_info().initramfs.expect(\"No initramfs found!\")` and unpacks the initramfs, but it no longer calls `init_root_mount()` (the old `init` did). `ROOT_MOUNT` is now only initialized by `rootfs::init()`, which is invoked from `fs::init()` during `main()`'s `init()`. Verify the ordering guarantees that `ROOT_MOUNT` is set before `FsResolver::new()`/`lookup` is used in `first_kthread`; if `rootfs::init()` is not called before `init_in_first_kthread`, `FsResolver::new()` will panic on the uninitialized `Once`. This is a sequencing concern worth confirming.",
+      "tp_fp": "fp",
+      "severity": "low",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "tp_fp_justification": "--- trae-qwen4-max final review (final verdict) ---\n独立核对 e1163681 快照：lib.rs:83-98 main() 第 86 行同步调用 init()，init() 第 110 行调 fs::init()，fs/mod.rs:54-68 fs::init() 末尾第 67 行调 rootfs::init()，rootfs.rs:128-133 以 ROOT_MOUNT.call_once 完成初始化。main() 在 init() 返回后才于 94-97 行 spawn first_kthread，FsResolver::new()（lib.rs:156）与 rootfs::init_in_first_kthread 均在 first_kthread 内运行。ROOT_MOUNT 先于任何使用被初始化，finding 假想的未初始化 Once panic 路径不存在；其本身也只是\"sequencing concern worth confirming\"的求证式提示，非缺陷指控。\n\n--- deepseek-v4.1-flash initial verdict (PR-Agent classifier, non-final) ---\nThe claimed sequencing hazard does not exist. In kernel/src/lib.rs, `main()` calls `init()` synchronously; `fs::init()` calls `rootfs::init()`, which sets `ROOT_MOUNT`, before `main()` spawns `first_kthread`. `first_kthread` is the only caller of `init_in_first_kthread`, and it first constructs `FsResolver::new()` (which reads `root_mount()`). Thus `ROOT_MOUNT` is always initialized prior to the moved rootfs unpacking. The finding only asks to 'verify' and demonstrates no actual failure path.",
+      "severity_justification": "Even if the hypothesis were true, it would be a boot-time panic; but there is no real bug, so impact is nil. Kept low as a non-issue verification request.",
+      "category_justification": "The finding alleges a potential ordering bug leading to a panic on an uninitialized Once, which is a correctness claim.",
+      "producer": "joint:pr-agent+deepseek-v4.1-flash+trae-qwen4-max",
+      "source": {
+        "type": "agent_output",
+        "alignment": "generated",
+        "candidate_id": "fp-008",
+        "session_file": "2026-11-18T08-34-25-232Z_01a1edca-fb50-7c7a-8b38-f64297458b3e.jsonl",
+        "finding_index": "1/3",
+        "judge_model": "qwen4-max",
+        "reviewer": "trae-qwen4-max",
+        "review_decision": "accept",
+        "initial_classifier_model": "deepseek-v4.1-flash"
+      },
+      "difficulty": "easy",
+      "context_required": "diff-plus-related-files"
+    },
+    {
+      "file": "kernel/src/thread/task.rs",
+      "start_line": 74,
+      "end_line": 76,
+      "message": "**Possible Bug**\n\n`init_in_first_process` is invoked inside the user task entry before the user-mode loop, but it runs on the init process's task. If `init_in_first_process` panics (e.g., `device::init_in_first_process(ctx).unwrap()` or `file_table.unwrap().write()`), the failure occurs in the user task context rather than failing early at boot. More importantly, `file_table.unwrap()` assumes the init process's file table is present; confirm it is always set for the init task, otherwise this panics at first process startup.",
+      "tp_fp": "fp",
+      "severity": "low",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "tp_fp_justification": "--- trae-qwen4-max final review (final verdict) ---\n独立核对 e1163681 快照：builder.rs:132 file_table.unwrap_or_else(|| RwArc::new(FileTable::new())) 保证表必被创建，155 行 ThreadLocal 以 Mutex::new(Some(file_table.clone_ro())) 存储；init_proc.rs:121-125 构建 init 任务未调 .file_table()，走默认创建路径。task.rs:74-76 在 is_init_process 时调 init_in_first_process，此时 file_table 必为 Some（唯一置 None 处是 exit.rs:83 线程退出路径，晚于启动）。unwrap 不可能在首进程启动时 panic。\"panic 发生在用户任务上下文\"是本 PR 刻意把初始化推迟到 init 进程的设计属性，非新缺陷。finding 为求证式提示且核心前提可证伪。\n\n--- deepseek-v4.1-flash initial verdict (PR-Agent classifier, non-final) ---\nThe actionable claim that `file_table.unwrap()` in `fs::init_in_first_process` may see a missing file table is false. `PosixThreadBuilder::build` uses `file_table.unwrap_or_else(|| RwArc::new(FileTable::new()))`, and the init task never supplies one, so an empty `FileTable` is created; `ThreadLocal::new` always stores `Some(file_table)` and no code path clears it. The remaining point—panics occurring in the init user task rather than at boot—is the intended design of this PR and panics are caught by `oops::catch_panics_as_oops`, so no defect is demonstrated.",
+      "severity_justification": "No actual failure path exists; the claim is a speculative confirmation request about an unwrap that is guaranteed to be populated.",
+      "category_justification": "The finding alleges a potential panic/startup failure from an unwrap on a missing file table, which is a correctness claim.",
+      "producer": "joint:pr-agent+deepseek-v4.1-flash+trae-qwen4-max",
+      "source": {
+        "type": "agent_output",
+        "alignment": "generated",
+        "candidate_id": "fp-009",
+        "session_file": "2026-11-18T08-34-25-232Z_01a1edca-fb50-7c7a-8b38-f64297458b3e.jsonl",
+        "finding_index": "2/3",
+        "judge_model": "qwen4-max",
+        "reviewer": "trae-qwen4-max",
+        "review_decision": "accept",
+        "initial_classifier_model": "deepseek-v4.1-flash"
+      },
+      "difficulty": "medium",
+      "context_required": "diff-plus-related-files"
+    },
+    {
+      "file": "kernel/src/process/posix_thread/builder.rs",
+      "start_line": 132,
+      "end_line": 132,
+      "message": "**Behavioral Change**\n\n`FileTable::new_with_stdio()` was replaced by `FileTable::new()` for all threads, with stdio now set only for the init process via `set_stdio`. Any other thread/process that previously relied on `new_with_stdio()` to get default stdin/stdout/stderr (e.g., kernel-spawned user threads or processes created without an explicit file table) will now start with an empty file table. Verify no other code path depends on the old default stdio behavior.",
+      "tp_fp": "fp",
+      "severity": "low",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "tp_fp_justification": "--- trae-qwen4-max final review (final verdict) ---\n独立核对 e1163681 快照全仓 PosixThreadBuilder::new 调用点仅三处：init_proc.rs:121（init 任务，不设 file_table 走默认 FileTable::new()，但 .set_init_process() 标记后由 fs/mod.rs:98 file_table.unwrap().write().set_stdio(&fs_resolver) 显式补 stdio）；clone.rs:284-288 与 374-377（两条 clone 路径均 .file_table(child_file_table) 显式传表）。new_with_stdio 已无任何调用者。唯一使用默认空表的用户任务就是 init 进程且被显式处理，finding 声称的\"其他线程/进程静默失去 stdio\"回归在此 SHA 不存在。\n\n--- deepseek-v4.1-flash initial verdict (PR-Agent classifier, non-final) ---\nThe finding's concern—that other threads/processes relying on the old default stdio will now get an empty file table—does not hold. All `PosixThreadBuilder::new` users were checked: the clone paths in process/clone.rs always supply `.file_table(child_file_table)`, and the init task (init_proc.rs) is the only one using the default, which is precisely the task that receives `set_stdio` via `is_init_process` in `fs::init_in_first_process`. No other user-task construction path exists (`create_new_user_task` is only called from the builder). Thus no code path depended on the old default, and no behavioral regression is present.",
+      "severity_justification": "There is no actual affected path; the changed behavior is the intended PR design and the init process still gets stdio.",
+      "category_justification": "The finding alleges a behavioral regression in stdio setup for user threads/processes, which is a correctness/behavior claim.",
+      "producer": "joint:pr-agent+deepseek-v4.1-flash+trae-qwen4-max",
+      "source": {
+        "type": "agent_output",
+        "alignment": "generated",
+        "candidate_id": "fp-010",
+        "session_file": "2026-11-18T08-34-25-232Z_01a1edca-fb50-7c7a-8b38-f64297458b3e.jsonl",
+        "finding_index": "3/3",
+        "judge_model": "qwen4-max",
+        "reviewer": "trae-qwen4-max",
+        "review_decision": "accept",
+        "initial_classifier_model": "deepseek-v4.1-flash"
+      },
+      "difficulty": "medium",
+      "context_required": "broader-project-context"
     }
   ]
 }

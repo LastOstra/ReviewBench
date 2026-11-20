@@ -56,6 +56,60 @@
         "original_end_line": 68,
         "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
       }
+    },
+    {
+      "file": "kernel/multicore_bringup/src/aarch64.rs",
+      "start_line": 62,
+      "end_line": 69,
+      "message": "**Possible Bug**\n\n`ap_startup_mapped_pages` is now created before the `kernel_mmi` lock is acquired and is no longer declared outside the block as a variable held for the duration of AP bringup. Previously the comment explicitly noted the mapping \"must be held throughout APs being booted up\". If `MappedPages` unmaps/frees its frames on drop, and this binding is dropped before the APs actually start executing the copied entry point, the identity mapping could be torn down while secondary cores still need it. Verify the mapping's lifetime covers the entire `cpu_on` sequence.",
+      "tp_fp": "fp",
+      "severity": "high",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "tp_fp_justification": "--- trae-qwen4-max final review (final verdict) ---\n独立核对 e71c4173 快照 multicore_bringup/src/aarch64.rs：ap_startup_mapped_pages 绑定在第 62 行函数顶层作用域，kernel_mmi 锁块是 76-89 行（块内仅 translate），绑定生存期覆盖整个 cpu_on 循环直至函数返回。finding 声称绑定在锁块内提前 drop，与代码相反。与 golden[0]（权限过宽）claim 不同。\n\n--- deepseek-v4.1-flash initial verdict (PR-Agent classifier, non-final) ---\nThe claim is factually wrong: `let mut ap_startup_mapped_pages = create_identity_mapping(1, flags)?;` is declared at function scope (line 62), outside the `{ ... }` block that locks `kernel_mmi` (the block only computes `entry_point_phys_addr`/`ap_data_phys_addr`). In Rust the binding lives until the end of the function body, so it is held across the entire `cpu_on` loop and all AP booting, satisfying the 'must be held throughout APs being booted up' requirement. The previous code also declared it before the lock block, so no lifetime regression occurred.",
+      "severity_justification": "If the mapping were dropped early, AP cores would execute unmapped/freed frames and fail to boot, which is a severe failure — but the scenario does not occur.",
+      "category_justification": "The finding alleges a resource-lifetime bug (premature unmap of AP entry-point pages) affecting AP bringup behavior.",
+      "producer": "joint:pr-agent+deepseek-v4.1-flash+trae-qwen4-max",
+      "source": {
+        "type": "agent_output",
+        "alignment": "generated",
+        "candidate_id": "fp-053",
+        "session_file": "2026-11-18T09-54-41-664Z_01a1ee14-7980-711f-b316-95f4596628c7.jsonl",
+        "finding_index": "1/2",
+        "judge_model": "qwen4-max",
+        "reviewer": "trae-qwen4-max",
+        "review_decision": "accept",
+        "initial_classifier_model": "deepseek-v4.1-flash"
+      },
+      "difficulty": "easy",
+      "context_required": "diff-only"
+    },
+    {
+      "file": "kernel/multicore_bringup/src/aarch64.rs",
+      "start_line": 62,
+      "end_line": 62,
+      "message": "**Possible Bug**\n\n`create_identity_mapping(1, flags)` is called before taking the `kernel_mmi` lock, while the subsequent `page_table.translate(virt_addr)` is done under the lock. If `create_identity_mapping` internally acquires the same `kernel_mmi` lock, this is fine, but if it does not, the page table is mutated without the lock, which can race with other cores. Confirm `create_identity_mapping` performs its own locking; otherwise the mapping creation should be moved inside the locked block.",
+      "tp_fp": "fp",
+      "severity": "high",
+      "category": "reliability",
+      "scope": "introduced-by-pr",
+      "tp_fp_justification": "--- trae-qwen4-max final review (final verdict) ---\n独立核对 e71c4173 快照 memory/src/lib.rs:168-224：create_identity_mapping 内部第 220 行 kernel_mmi_ref.lock() 后才改页表；帧分配在 FREE_GENERAL_FRAMES_LIST.lock()（frame_allocator:1313）、页分配在 FREE_PAGE_LIST.lock()（page_allocator:772）保护下。调用点（aarch64.rs:62）自身未持 kernel_mmi 锁，无死锁。finding 以'文档未写锁要求'推断无锁竞态，被实现直接证伪。\n\n--- deepseek-v4.1-flash initial verdict (PR-Agent classifier, non-final) ---\nThe finding's own conditional resolves against it: `create_identity_mapping` in kernel/memory/src/lib.rs:168 does its own locking, ending with `kernel_mmi_ref.lock().page_table.map_allocated_pages_to(ap, af, flags)`. Its doc comment explicitly states it acquires the frame allocator and kernel MMI locks and that callers must not hold them. Thus there is no unlocked page-table mutation/race, and the suggested fix (moving the call inside the `kernel_mmi` locked block) would deadlock on the non-reentrant mutex.",
+      "severity_justification": "If the page table really were mutated without the lock, concurrent mapping operations could corrupt page tables in a multicore bringup path; that would be severe, but the premise is false.",
+      "category_justification": "The finding concerns concurrency and lock correctness (unlocked page-table mutation / potential deadlock in multicore bringup).",
+      "producer": "joint:pr-agent+deepseek-v4.1-flash+trae-qwen4-max",
+      "source": {
+        "type": "agent_output",
+        "alignment": "generated",
+        "candidate_id": "fp-054",
+        "session_file": "2026-11-18T09-54-41-664Z_01a1ee14-7980-711f-b316-95f4596628c7.jsonl",
+        "finding_index": "2/2",
+        "judge_model": "qwen4-max",
+        "reviewer": "trae-qwen4-max",
+        "review_decision": "accept",
+        "initial_classifier_model": "deepseek-v4.1-flash"
+      },
+      "difficulty": "easy",
+      "context_required": "diff-plus-related-files"
     }
   ]
 }

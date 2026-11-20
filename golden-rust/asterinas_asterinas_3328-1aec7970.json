@@ -31,6 +31,33 @@
         "original_end_line": 295,
         "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
       }
+    },
+    {
+      "file": "kernel/src/fs/fs_impls/virtiofs/fs.rs",
+      "start_line": 68,
+      "end_line": 70,
+      "message": "**Key mismatch with create**\n\n`obtain_key` derives the cache key from `fs_creation_ctx.source()` (the raw source string), while `create` derives the tag from `fs_creation_ctx.args()` (the mount data). If the source and the tag differ (e.g. source is a device path or empty while the tag is passed via `data`), the cache key will not correspond to the actual virtio-fs instance being created, so two mounts of the same tag with different sources would not deduplicate, and two different tags with the same source could incorrectly share an instance. The key should be computed from the same value `create` uses.",
+      "tp_fp": "fp",
+      "severity": "medium",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "tp_fp_justification": "--- trae-qwen4-max final review (final verdict) ---\n独立核对 1aec7970 快照 virtiofs/fs.rs：create 在 56-60 行用 fs_creation_ctx.source() 取 tag，obtain_key 在 68-70 行同样用 source()，两者同源；全文件无 args() 调用。finding 的核心前提'create 从 args() 取 tag'与代码不符，所谓 key/create 不一致及两种错配场景均不存在。\n\n--- deepseek-v4.1-flash initial verdict (PR-Agent classifier, non-final) ---\nThe finding claims `create` derives the virtiofs tag from `fs_creation_ctx.args()`, but `VirtioFsType::create` actually uses `fs_creation_ctx.source()` (fs.rs:56-60), and `obtain_key` uses the same `source()` (fs.rs:68-70). There is no `args()` usage in the virtiofs code, so the key already matches the value used by `create`; the alleged mismatch does not exist.",
+      "severity_justification": "If the claimed key/create mismatch were real, it could cause incorrect FS sharing or failure to deduplicate across mounts, which would be a medium-impact correctness bug; the claim is simply not true here.",
+      "category_justification": "The finding alleges a cache-key vs. FS-creation input mismatch, which would be a logic/correctness issue if valid.",
+      "producer": "joint:pr-agent+deepseek-v4.1-flash+trae-qwen4-max",
+      "source": {
+        "type": "agent_output",
+        "alignment": "generated",
+        "candidate_id": "fp-024",
+        "session_file": "2026-11-19T01-26-23-413Z_01a1f169-77b5-7cfd-a6c3-0df98368e06f.jsonl",
+        "finding_index": "1/2",
+        "judge_model": "qwen4-max",
+        "reviewer": "trae-qwen4-max",
+        "review_decision": "accept",
+        "initial_classifier_model": "deepseek-v4.1-flash"
+      },
+      "difficulty": "easy",
+      "context_required": "diff-plus-related-files"
     }
   ]
 }

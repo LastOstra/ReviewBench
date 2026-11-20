@@ -28,6 +28,60 @@
         "alignment": "on_chosen_head",
         "original_commit": "ab840e05d2715d48a8e9600912283a539c1afad5"
       }
+    },
+    {
+      "file": "library/std/src/sys/pal/uefi/process.rs",
+      "start_line": 119,
+      "end_line": 123,
+      "message": "**Args not set when empty**\n\nIn `output`, `set_args` is only called when `!self.args.is_empty()`. However, `create_args` always includes the program name, so even with zero user args the load options should contain the quoted program name. Skipping `set_args` when there are no user args means the child image receives no load options at all, which may differ from expected behavior where the program name is passed. Verify whether the program name should still be set in this case.",
+      "tp_fp": "fp",
+      "severity": "medium",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "tp_fp_justification": "--- trae-qwen4-max final review (final verdict) ---\n独立核对 ab840e05 快照：process.rs:119-123 空 args 跳过 set_args 处有注释 'UEFI adds the bin name by default'，系刻意行为；load_image（process.rs:337-344）向 BootServices.load_image 传 null_mut(),0，子镜像 load_options_size=0；子侧 args.rs:23-27 在 lp_size<size_of::<u16>() 时回退 lazy_current_exe()，argv[0] 仍为子镜像自身 current_exe 设备路径。finding 声称'子镜像收不到程序名'不成立，程序名经回退路径仍可得。\n\n--- deepseek-v4.1-flash initial verdict (PR-Agent classifier, non-final) ---\nThe premise that skipping set_args leaves the child without the program name is wrong. With no user args, the child's own args() falls back to current_exe() (args.rs:13,23-27), so argv[0] is still populated with the child image path. The skip is intentional (documented by the adjacent 'UEFI adds the bin name by default' comment) and was retained unchanged in released Rust 1.85. No concrete behavioral defect is demonstrated, and the finding only asks to 'verify', so it is not an actionable real concern.",
+      "severity_justification": "If the program name were actually omitted from the child's argv it would be a functional correctness issue, though a niche one; the claimed defect does not occur.",
+      "category_justification": "The finding alleges incorrect argument passing (missing argv[0]/program name) to the spawned child process.",
+      "producer": "joint:pr-agent+deepseek-v4.1-flash+trae-qwen4-max",
+      "source": {
+        "type": "agent_output",
+        "alignment": "generated",
+        "candidate_id": "fp-036",
+        "session_file": "2026-11-18T09-23-38-962Z_01a1edf8-0d52-70ff-bb35-26eff4617f40.jsonl",
+        "finding_index": "2/2",
+        "judge_model": "qwen4-max",
+        "reviewer": "trae-qwen4-max",
+        "review_decision": "accept",
+        "initial_classifier_model": "deepseek-v4.1-flash"
+      },
+      "difficulty": "medium",
+      "context_required": "diff-plus-related-files"
+    },
+    {
+      "file": "library/std/src/sys/pal/uefi/process.rs",
+      "start_line": 697,
+      "end_line": 727,
+      "message": "**Missing NUL terminator**\n\n`create_args` builds the UEFI load options string but never appends a terminating NUL (`NULL` is declared but unused). UEFI load options are expected to be a NUL-terminated string; without the terminator the child image may read past the buffer when parsing its command line, producing garbage arguments or out-of-bounds reads. The `NULL` constant being defined but unused is a strong hint the terminator was intended.",
+      "tp_fp": "fp",
+      "severity": "medium",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "tp_fp_justification": "--- trae-qwen4-max final review (final verdict) ---\n独立核对 ab840e05 快照：create_args（process.rs:697-727）确实不追加 NUL，以 SPACE 结尾；但 set_args（458-474）将 load_options_size 设为 size_of::<u16>()*len（len 即 boxed slice 长度，mem::forget 后分配恰为 len*2 字节），args.rs:23-34 用该 size 构造 from_raw_parts(ptr, lp_size/2)，读取严格限于分配范围内，不存在越界读或泄露相邻数据。解析器 parse_lp_cmd_line 以迭代器耗尽自然终止，末尾 SPACE 正常结束最后一个参数（133-139），NUL 只是可选提前终止符（97/131），size-delimited 缓冲区不需要它。finding 的'overrun/leak'后果不成立。\n\n--- deepseek-v4.1-flash initial verdict (PR-Agent classifier, non-final) ---\ncreate_args indeed omits a NUL and leaves NULL unused, but the substantive claim is wrong. UEFI load options are a sized buffer (load_options_size); NUL termination is only a convention, not a requirement (confirmed by uefi-rs docs: 'This format is not required though'). The in-tree consumer args.rs builds a slice from load_options_size and iterates exactly that many code units, so it cannot read past the buffer. set_args sets the size to exactly len*2, matching the buffer. The unused NULL is just a leftover from copying the parser's constants, not evidence of intended termination, and the released Rust 1.85 code likewise omits the terminator.",
+      "severity_justification": "If the claimed malformed load options caused child-side OOB reads or wrong args it would matter, but the concern is not a real defect given the size-delimited buffer.",
+      "category_justification": "The finding alleges argument serialization produces an invalid buffer and thus wrong child arguments.",
+      "producer": "joint:pr-agent+deepseek-v4.1-flash+trae-qwen4-max",
+      "source": {
+        "type": "agent_output",
+        "alignment": "generated",
+        "candidate_id": "fp-037",
+        "session_file": "2026-11-18T09-23-38-962Z_01a1edf8-0d52-70ff-bb35-26eff4617f40.jsonl",
+        "finding_index": "1/2",
+        "judge_model": "qwen4-max",
+        "reviewer": "trae-qwen4-max",
+        "review_decision": "accept",
+        "initial_classifier_model": "deepseek-v4.1-flash"
+      },
+      "difficulty": "medium",
+      "context_required": "diff-plus-related-files"
     }
   ]
 }

@@ -28,6 +28,60 @@
         "alignment": "on_chosen_head",
         "original_commit": "694a6b9f8bc911536eaefdcd0ab470849030937d"
       }
+    },
+    {
+      "file": "library/core/src/fmt/rt.rs",
+      "start_line": 68,
+      "end_line": 111,
+      "message": "**Possible Bug**\n\nThe `argument_new!` macro is defined at module scope but is not marked with `#[macro_export]` or `#[allow(unused_macros)]`. If the macro is only used within this module it is fine, but if any cfg combination leaves it unused (e.g. the macro is defined unconditionally while all uses are behind some cfg), it could trigger an `unused_macros` warning. Confirm the macro is used in all configurations where it is defined.",
+      "tp_fp": "fp",
+      "severity": "low",
+      "category": "maintainability",
+      "scope": "introduced-by-pr",
+      "tp_fp_justification": "--- trae-qwen4-max final review (final verdict) ---\n独立核对 694a6b9f 快照 rt.rs：argument_new! 于 68 行无条件定义，被 new_display/new_debug/new_debug_noop/new_octal/new_lower_hex/new_upper_hex/new_pointer/new_binary/new_lower_exp/new_upper_exp 十个方法（116-154 行）无条件使用；全文件 cfg 仅三处——19 行 Placeholder::new 的 cfg(bootstrap)、94/100 行宏体内字段级 sanitize cfg，均不影响宏的使用与否。不存在宏定义而未被使用的配置，unused_macros 不会触发；模块内使用的 macro_rules! 无需 macro_export。与 golden[0]（mem import 在 cfi/kcfi 下 unused）claim 不同，非语义同一。\n\n--- deepseek-v4.1-flash initial verdict (PR-Agent classifier, non-final) ---\nThe macro is defined unconditionally at rt.rs:68 and used by all ten `Argument::new_*` methods (rt.rs:113-156), which have no cfg gating; the only cfgs are `#[cfg(bootstrap)]` on an unrelated item and the two field-level cfgs inside the macro body. Thus there is no configuration where the definition exists and all uses are removed, so no `unused_macros` warning can occur. The finding states only a hypothetical ('if any cfg combination...') that does not apply to this code.",
+      "severity_justification": "The raised concern is purely hypothetical and cannot occur; at most it would be a lint warning, never a functional problem.",
+      "category_justification": "The finding concerns macro lints/hygiene attributes (unused_macros, macro_export), i.e. code-organization/style rather than behavior.",
+      "producer": "joint:pr-agent+deepseek-v4.1-flash+trae-qwen4-max",
+      "source": {
+        "type": "agent_output",
+        "alignment": "generated",
+        "candidate_id": "fp-038",
+        "session_file": "2026-11-18T09-26-54-018Z_01a1edfb-0742-7633-b8f7-30a715b911aa.jsonl",
+        "finding_index": "2/2",
+        "judge_model": "qwen4-max",
+        "reviewer": "trae-qwen4-max",
+        "review_decision": "accept",
+        "initial_classifier_model": "deepseek-v4.1-flash"
+      },
+      "difficulty": "easy",
+      "context_required": "diff-only"
+    },
+    {
+      "file": "library/core/src/fmt/rt.rs",
+      "start_line": 100,
+      "end_line": 106,
+      "message": "**Possible Bug**\n\nThe CFI-enabled branch of `argument_new!` uses a closure `|ptr: NonNull<()>, fmt: &mut Formatter<'_>| { ... }` as the `formatter` field, but the field type is `fn(NonNull<()>, &mut Formatter<'_>) -> Result`. A non-capturing closure can coerce to a fn pointer, so this likely compiles, but the closure's body calls `$f` (e.g. `<T as Display>::fmt`) through `func`, which is fine. The concern is that this branch is only compiled under `sanitize = \"cfi\"`/`\"kcfi\"`, so it is not exercised by normal CI builds; a type or coercion error here would only surface in sanitizer builds. Verify the closure coerces correctly and that `$f` is a valid `fn(&$t, &mut Formatter<'_>) -> Result` in all call sites (e.g. `new_debug_noop` passes a closure, which is fine, but confirm it coerces).",
+      "tp_fp": "fp",
+      "severity": "low",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "tp_fp_justification": "--- trae-qwen4-max final review (final verdict) ---\n独立核对 694a6b9f 快照 rt.rs:46：字段实为 formatter: unsafe fn(NonNull<()>, &mut Formatter<'_>) -> Result，并非 finding 所称的安全 fn(...)。CFI 分支（100-106）的闭包不捕获环境，可 coerce 到安全 fn 指针再 coerce 到 unsafe fn 指针，类型合法；$f 为 trait 方法项或非捕获闭包，签名匹配。finding 前提错误且只是'likely compiles'式的自我对冲验证请求，无实际缺陷。\n\n--- deepseek-v4.1-flash initial verdict (PR-Agent classifier, non-final) ---\nThe finding's central factual claim is wrong: ArgumentType::Placeholder's field is declared `formatter: unsafe fn(NonNull<()>, &mut Formatter<'_>) -> Result` (rt.rs:47), not `fn(...)`. A non-capturing closure coerces to a safe fn pointer, which coerces to `unsafe fn`, so the CFI branch is well-typed. Every $f (trait method items and the `|_: &T, _| Ok(())` closure in new_debug_noop) has a valid `fn(&T, &mut Formatter<'_>) -> Result` type, and the call site `formatter(value, f)` matches the field type. The finding identifies no actual defect — only a self-hedged ('likely compiles') request to verify something that is verifiably fine.",
+      "severity_justification": "No real issue is demonstrated; the claim is a speculative verification request with an incorrect description of the field type, and the code type-checks correctly.",
+      "category_justification": "The finding is framed as a possible type/coercion bug ('Possible Bug') in the new CFI branch.",
+      "producer": "joint:pr-agent+deepseek-v4.1-flash+trae-qwen4-max",
+      "source": {
+        "type": "agent_output",
+        "alignment": "generated",
+        "candidate_id": "fp-039",
+        "session_file": "2026-11-18T09-26-54-018Z_01a1edfb-0742-7633-b8f7-30a715b911aa.jsonl",
+        "finding_index": "1/2",
+        "judge_model": "qwen4-max",
+        "reviewer": "trae-qwen4-max",
+        "review_decision": "accept",
+        "initial_classifier_model": "deepseek-v4.1-flash"
+      },
+      "difficulty": "easy",
+      "context_required": "diff-plus-related-files"
     }
   ]
 }

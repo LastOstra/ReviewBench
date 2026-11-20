@@ -56,6 +56,60 @@
         "original_end_line": 81,
         "alignment_reasoning": "Defect range verified against the exam_head file contents; it differs from the comment's original anchor range, which is recorded in original_start_line/original_end_line."
       }
+    },
+    {
+      "file": "kernel/src/syscall/rt_sigtimedwait.rs",
+      "start_line": 44,
+      "end_line": 70,
+      "message": "**Possible Bug**\n\nThe `mask` passed to `dequeue_signal` is computed as `!set` (the complement of the requested set), while `with_sigmask_changed` uses `sig_mask & mask` to temporarily block signals. If `dequeue_signal` expects the set of signals to wait for (as the name and the `!set` construction suggest), then passing the complement means it will dequeue signals *not* in the requested set and miss the requested ones. The two usages of `mask` are inconsistent: one treats it as \"signals to block/ignore\" and the other as \"signals to wait for\". This should be verified against `dequeue_signal`'s contract; if it expects the wait set, the fast-path and the pause predicate will return the wrong signal.",
+      "tp_fp": "fp",
+      "severity": "high",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "tp_fp_justification": "--- trae-qwen4-max final review (final verdict) ---\n独立核对 3ae42372 快照：pending.rs:33 文档明确 dequeue_signal 取'not masked by mask'的信号；sig_queues.rs:168-199 对 blocked.contains(signum) 者 continue 跳过，参数语义是屏蔽集。rt_sigtimedwait.rs:44 mask=!set 恰使等待集内信号不被跳过；signalfd.rs:183 用完全相同的 !mask 惯用法；with_sigmask_changed(sig_mask & !set) 即临时解除等待集屏蔽。finding 声称 mask 语义相反/取错信号，与文档和实现相反。与 golden[0]/[1]（will_ignore、siginfo 顺序）claim 不同，非语义同一。\n\n--- deepseek-v4.1-flash initial verdict (PR-Agent classifier, non-final) ---\nThe finding's premise is wrong. `HandlePendingSignal::dequeue_signal` is documented (kernel/src/process/signal/pending.rs:33-36) as dequeuing 'the next pending signal that is not masked by `mask`', and `Queues::dequeue`/`SigQueues::dequeue` (kernel/src/process/signal/sig_queues.rs:48, 147-170) treat `mask` as the blocked/skip set: `if blocked.contains(signum) { continue; }`. So passing `!set` is the correct idiom — it skips every signal outside the requested set and dequeues only signals in `set`. The same `!mask` idiom is used by `signalfd.rs::try_read`. The two uses are consistent: `sig_mask & mask` (= old_mask & !set) temporarily unblocks exactly the signals in `set`, i.e. it treats `mask` as the complement of the wait set. Both the fast path and the pause predicate therefore wait on the correct signals. No bug exists; the finding speculates about a contract it did not check.",
+      "severity_justification": "If the claim were true it would be a high-severity functional bug (returning signals outside the requested set / missing requested ones), but it is factually incorrect.",
+      "category_justification": "The finding alleges a logic error in signal-set/mask handling.",
+      "producer": "joint:pr-agent+deepseek-v4.1-flash+trae-qwen4-max",
+      "source": {
+        "type": "agent_output",
+        "alignment": "generated",
+        "candidate_id": "fp-022",
+        "session_file": "2026-11-19T01-20-10-612Z_01a1f163-c774-7f03-8721-3985fa77af58.jsonl",
+        "finding_index": "1/2",
+        "judge_model": "qwen4-max",
+        "reviewer": "trae-qwen4-max",
+        "review_decision": "accept",
+        "initial_classifier_model": "deepseek-v4.1-flash"
+      },
+      "difficulty": "medium",
+      "context_required": "diff-plus-related-files"
+    },
+    {
+      "file": "kernel/src/syscall/rt_sigtimedwait.rs",
+      "start_line": 68,
+      "end_line": 94,
+      "message": "**Possible Bug**\n\n`sig_dispositions().lock()` is called and then `sig_dispositions.lock()` is called again on the result. If `sig_dispositions()` already returns a guard (e.g., a `RwMutex` read guard), calling `.lock()` on it is likely a type error or a double-lock. More importantly, the same double-lock pattern appears in the pause predicate, and holding these locks across the `pause_until_or_timeout` wait could deadlock if the signal-delivery path needs the same lock to make a signal pending and wake the waiter. Verify the locking is not held while blocking.",
+      "tp_fp": "fp",
+      "severity": "high",
+      "category": "reliability",
+      "scope": "introduced-by-pr",
+      "tp_fp_justification": "--- trae-qwen4-max final review (final verdict) ---\n独立核对 3ae42372 快照：process/mod.rs:134 sig_dispositions: Mutex<Arc<Mutex<SigDispositions>>>，两次 .lock() 作用于不同层级的锁（外层 Mutex→guard deref 到 Arc→内层 Mutex），同模式见 has_pending_signal/rt_sigaction/execve，非双重加锁。cond 闭包（rt_sigtimedwait.rs:92-107）内 guard 为局部变量，闭包只返回 Option<Box<dyn Signal>>；wait.rs:218-230 循环先 cond() 后 self.wait()，睡眠时不持锁；信号入队路径（sig_queues.enqueue 等）不取 sig_dispositions 任何一层锁。finding 的编译错误/死锁指控均不成立。与 golden[0]/[1] claim 不同，非语义同一。\n\n--- deepseek-v4.1-flash initial verdict (PR-Agent classifier, non-final) ---\nBoth central claims are factually wrong. (1) `Process::sig_dispositions()` returns `&Mutex<Arc<Mutex<SigDispositions>>>` (kernel/src/process/process/mod.rs:134,624), not a guard. The first `.lock()` acquires the outer process-level mutex; the second `.lock()` follows the `Arc` deref and acquires the distinct inner `Mutex<SigDispositions>`. This exact pattern already exists in `has_pending_signal` (kernel/src/process/signal/pending.rs:92-93), so it is neither a type error nor a double-lock. (2) The locks are not held across the wait: the `cond` closure passed to `pause_until_or_timeout` acquires and drops them inside its own body each call, and `Waiter::wait_until_or_cancelled` (ostd/src/sync/wait.rs:218-230) invokes `cond()`, `cancel_cond()`, and only then calls `self.wait()`. Signal enqueueing takes `sig_queues`, not `sig_dispositions`, so there is no lock-order deadlock. The `BTreeMap`/`Mutex<Arc<Mutex<...>>>` pattern is only for CLONE_SIGHAND. Nothing is held while blocking in the pause path.",
+      "severity_justification": "If true, the claim would mean a compile error or a deadlock (high impact), but the claims are incorrect.",
+      "category_justification": "The finding alleges a locking/deadlock problem in the wait path.",
+      "producer": "joint:pr-agent+deepseek-v4.1-flash+trae-qwen4-max",
+      "source": {
+        "type": "agent_output",
+        "alignment": "generated",
+        "candidate_id": "fp-023",
+        "session_file": "2026-11-19T01-20-10-612Z_01a1f163-c774-7f03-8721-3985fa77af58.jsonl",
+        "finding_index": "2/2",
+        "judge_model": "qwen4-max",
+        "reviewer": "trae-qwen4-max",
+        "review_decision": "accept",
+        "initial_classifier_model": "deepseek-v4.1-flash"
+      },
+      "difficulty": "medium",
+      "context_required": "diff-plus-related-files"
     }
   ]
 }

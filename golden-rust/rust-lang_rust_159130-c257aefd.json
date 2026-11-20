@@ -28,6 +28,33 @@
         "alignment": "on_chosen_head",
         "original_commit": "c257aefd56c79af1ac53265f74d225c9660c70bd"
       }
+    },
+    {
+      "file": "library/core/src/fmt/num.rs",
+      "start_line": 831,
+      "end_line": 835,
+      "message": "**Possible Bug**\n\n`write_quad` computes `high = quad / 100` via `(quad * ((1 << 19) / 100 + 1)) >> 19`. The magic constant `(1 << 19) / 100 + 1` is `5242`, and `5242 * 9999 = 52_414_758`, which is less than `2^19 * 100 = 52_428_800`, so the shift yields `99` instead of `100` for `quad = 9999`. This produces `\"0099\"` instead of `\"9999\"` (and similarly wrong output for other values where the approximation underflows). The old code used exact `/` and `%`. This is a correctness regression in decimal formatting; it is triggered by any value whose four-digit group is 9999 (e.g. formatting `9999` or `1_9999`).",
+      "tp_fp": "fp",
+      "severity": "high",
+      "category": "correctness",
+      "scope": "introduced-by-pr",
+      "tp_fp_justification": "--- trae-qwen4-max final review (final verdict) ---\n独立核对 rust c257aefd 快照 num.rs:832：high=(quad*const{(1<<19)/100+1})>>19。(1<<19)/100=5242，+1=5243，finding 算成 5242 已错；且 quad=9999 时期望商本就是 99（9999/100=99），finding 声称应得 100 亦错。一般性验证：quad=100q+r（0≤q,r≤99），quad*5243=524288q+(12q+5243r)，余项最大 99*5255=520245<524288，故 high=q 恒成立，low=r，输出正确。所谓 9999→'0099' 的回归不存在。\n\n--- deepseek-v4.1-flash initial verdict (PR-Agent classifier, non-final) ---\nThe finding's arithmetic is factually wrong. `const { (1 << 19) / 100 + 1 }` evaluates to 5243 (524288/100 = 5242, +1), not 5242. More importantly, the expected quotient for quad = 9999 is 99 (9999/100 = 99), so `high = 99` is correct, and `low = 9999 - 9900 = 99`; the function writes \"99\"+\"99\" = \"9999\", not \"0099\". The claim that the shift should yield 100 is itself incorrect, since 100 would not index a valid two-digit pair. General verification: with quad = 100q + r (0<=q,r<=99), quad*5243 = q*524288 + (12q + r*5243) and the remainder term is at most 12*99 + 99*5243 = 520,245 < 524,288, so floor(quad*5243/524288) = q = quad/100 for all quad < 10_000. Boundary cases (42, 100, 9999) all produce correct output.",
+      "severity_justification": "The alleged issue (wrong decimal digits for any four-digit group equal to 9999) would be a user-facing correctness regression, but the claim is false and no such bug exists.",
+      "category_justification": "The finding alleges incorrect numeric output in decimal formatting; it is a correctness claim (albeit an incorrect one).",
+      "producer": "joint:pr-agent+deepseek-v4.1-flash+trae-qwen4-max",
+      "source": {
+        "type": "agent_output",
+        "alignment": "generated",
+        "candidate_id": "fp-046",
+        "session_file": "2026-11-18T09-37-12-978Z_01a1ee04-7912-767e-9ce8-3bf87201477d.jsonl",
+        "finding_index": "1/1",
+        "judge_model": "qwen4-max",
+        "reviewer": "trae-qwen4-max",
+        "review_decision": "accept",
+        "initial_classifier_model": "deepseek-v4.1-flash"
+      },
+      "difficulty": "easy",
+      "context_required": "diff-only"
     }
   ]
 }
